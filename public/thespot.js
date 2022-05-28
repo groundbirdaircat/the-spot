@@ -4738,7 +4738,6 @@ const websocket = {
         )
     },
     handleSocketMessage( { data } ){
-        console.log('hm')
         if (!this.verifyJSON(data)) return
 
         data = JSON.parse(data)
@@ -4789,7 +4788,6 @@ const websocket = {
         },
     },
     handleSocketInit(data){
-        console.log('init', data)
         if (data.force) {
             return this.id = data.id
         }
