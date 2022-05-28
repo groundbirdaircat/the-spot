@@ -18,5 +18,6 @@ app.listen(
             'Express Listening: ', 
             app.get('port')
         )
+        console.log()
     }
 ) 

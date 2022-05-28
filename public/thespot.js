@@ -329,6 +329,8 @@ function init(){
 
     chat.init()
 
+    websocket.init()
+
     theMap = map.new()
     theMap.generate()
 
@@ -4340,6 +4342,39 @@ var chat = {
         this.chatOpenFromMouseOver = false
     },
 
+    io: {
+        handleReceiveMessage(data){
+            chat.view.addMessage({
+                icons: data.icons,
+                user: data.user,
+                msg: data.message
+            })
+            if (zoom.current == 80) {
+                chat.worldMsg.new({
+                    text: data.message,
+                    x: thePlayer.preZoomedX,
+                    y: thePlayer.preZoomedY,
+                })
+            }
+            else {
+                chat.worldMsg.new({
+                    text: data.message,
+                    x: thePlayer.x,
+                    y: thePlayer.y,
+                })
+            }
+            if (zoom.current > 5) animate()
+        },
+        handleSendMessage(msg){
+            websocket.sendSocketObj({
+                type: 'message',
+                icons: true,
+                user: websocket.id,
+                message: msg
+            })
+        },
+    },
+
     // section to type in chat
     typing: {
         init(){
@@ -4388,30 +4423,10 @@ var chat = {
         },
         submitMessage(msg){
             if (msg) {
+                chat.io.handleSendMessage(msg)
                 // do message here first
-                chat.view.addMessage({
-                    icons: true,
-                    user: 'sup',
-                    msg
-                })
-                if (zoom.current == 80) {
-                    chat.worldMsg.new({
-                        text: msg,
-                        x: thePlayer.preZoomedX,
-                        y: thePlayer.preZoomedY,
-                    })
-                }
-                else {
-                    chat.worldMsg.new({
-                        text: msg,
-                        x: thePlayer.x,
-                        y: thePlayer.y,
-                    })
-                }
-                if (zoom.current > 5) animate()
+                this.clearInput()
             }
-            // this.changeState(false)
-            this.clearInput()
         },
         cancelMessage(){
             this.changeState(false)
@@ -4681,3 +4696,110 @@ const animate = (function animWrap(){
     }
     return go
 })()
+
+/////////////////////////////
+/////////////////////////////
+
+const websocket = {
+    ws: null,
+    id: 0,
+    init(){
+        this.createWebSocket()
+        this.setSocketListeners()
+    },
+    createWebSocket(){
+        this.ws = 
+            new WebSocket(
+                'ws://localhost:5000'
+            )
+    },
+    setSocketListeners(){
+        this.ws.onmessage = 
+            this.handleSocketMessage.bind(this)
+
+        this.ws.onopen = 
+            this.handleSocketOpen.bind(this)
+
+        this.ws.onclose = 
+            this.handleSocketClose.bind(this)
+    },
+    verifyJSON(msg) {
+        try {
+            JSON.parse(msg);
+            return true;
+        }
+        catch (error) {
+            return false;
+        }
+    },
+    sendSocketObj(data){
+        this.ws.send(
+            JSON.stringify(data)
+        )
+    },
+    handleSocketMessage( { data } ){
+        console.log('hm')
+        if (!this.verifyJSON(data)) return
+
+        data = JSON.parse(data)
+
+        switch (data.type) {
+            case 'init': 
+                this.handleSocketInit(data)
+                break
+
+            case 'message':
+                chat.io.handleReceiveMessage(data)
+                break
+
+            case 'map':
+                console.log(data.map)
+                break
+        }
+    },
+    handleSocketOpen(){
+        if (!this.rejoin.state) return
+
+        this.rejoin.reset()
+
+        console.log('WebSocket reconnected: ', new Date())
+    },
+    handleSocketClose(){
+        if (!this.rejoin.state) {
+            this.rejoin.state = true
+
+            console.log('WebSocket disconnected: ', new Date())
+        }
+
+        this.rejoin.timeout = 
+            setTimeout(
+                this.init.bind(this),
+                this.rejoin.attempt++ * 1000 + 
+                Math.random() * 500
+            )
+    },
+    rejoin: {
+        state: false,
+        attempt: 0,
+        timeout: null,
+        reset(){
+            clearTimeout(this.timeout)
+            this.attempt = 0
+            this.state = false
+        },
+    },
+    handleSocketInit(data){
+        console.log('init', data)
+        if (data.force) {
+            return this.id = data.id
+        }
+
+        else if (!this.id) {
+            this.id = data.id
+        }
+        this.sendSocketObj({
+            type: 'init',
+            id: this.id,
+        })
+    },
+}
