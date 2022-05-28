@@ -133,8 +133,8 @@ const dbg = (function debugWrap(){
 const zoom = (function zoomWrap(){
     addEventListener('wheel', handleWheel)
 
-    var currentZoomLevel = 1,
-        zoomLevels = [ 1, 2, 10, 40, 80 ], // removed 5
+    var currentZoomLevel = 0,
+        zoomLevels = [ 1, 2, 10, 40, 80 ],
         currentZoom = zoomLevels[currentZoomLevel]
 
     function handleWheel(e){
@@ -267,13 +267,11 @@ const vmaxToPx = n =>
         canvas.width,
         canvas.height
     ) / 100 * n / zoom.current
-
 const vmaxToPxReal = n => 
     Math.max(
         canvas.width,
         canvas.height
     ) / 100 * n
-
 const pxToVmax = n => 
     n / (Math.max(
             canvas.width,
@@ -332,47 +330,46 @@ function init(){
     websocket.init()
 
     theMap = map.new()
-    theMap.generate()
+    // theMap.generate()
 
-    thePlayer = player.new()
+    // thePlayer = player.new()
 
-    var tile = map.tiles[1][1]
-    tile.items.push(item.new({
-        itemType: 'water',
-        x: 21,
-        y: 21,
-        tileX: tile.tileX,
-        tileY: tile.tileY,
-        style: {
-            type: 'circle',
-            r: .25
-        },
-    }))
-    tile.items.push(item.new({
-        itemType: 'water',
-        x: 21,
-        y: 21,
-        tileX: tile.tileX,
-        tileY: tile.tileY,
-        style: {
-            type: 'circle',
-            r: .25
-        },
-    }))
+    // var tile = map.tiles[1][1]
+    // tile.items.push(item.new({
+    //     itemType: 'water',
+    //     x: 21,
+    //     y: 21,
+    //     tileX: tile.tileX,
+    //     tileY: tile.tileY,
+    //     style: {
+    //         type: 'circle',
+    //         r: .25
+    //     },
+    // }))
+    // tile.items.push(item.new({
+    //     itemType: 'water',
+    //     x: 21,
+    //     y: 21,
+    //     tileX: tile.tileX,
+    //     tileY: tile.tileY,
+    //     style: {
+    //         type: 'circle',
+    //         r: .25
+    //     },
+    // }))
 
-    tile.items.push(item.new({
-        itemType: 'blood',
-        x: 24,
-        y: 21,
-        tileX: tile.tileX,
-        tileY: tile.tileY,
-        style: {
-            type: 'circle',
-            r: .25
-        },
-    }))
+    // tile.items.push(item.new({
+    //     itemType: 'blood',
+    //     x: 24,
+    //     y: 21,
+    //     tileX: tile.tileX,
+    //     tileY: tile.tileY,
+    //     style: {
+    //         type: 'circle',
+    //         r: .25
+    //     },
+    // }))
 
-    requestAnimationFrame(animate)
 }
 
 var item = {
@@ -905,12 +902,8 @@ var house = {
         ['#1e1610', '#141914', '#333']
     ],
     type: 'house',
-    init( { x, y, houseType, tileX, tileY } ){
-        var pickedColor = 
-            this.colors[Math.floor(
-                Math.random() * this.colors.length
-            )]
-        // var pickedColor = this.colors[0]
+    init( { x, y, houseType, tileX, tileY, color } ){
+        var pickedColor = this.colors[color]
 
         this.tileX = tileX
         this.tileY = tileY
@@ -932,7 +925,6 @@ var house = {
 
         this.currentItemZone = ''
         this.itemZones = fresh.itemZones 
-        // if (!this.itemZones) this.itemZones = []
 
         this.spawnPoints = fresh.spawnPoints
         if (!this.spawnPoints) this.spawnPoints = []
@@ -946,7 +938,6 @@ var house = {
             if (this.lastDrawnDT == dt) return
             else this.lastDrawnDT = dt
         }
-
 
         // FLOORS / ITEMS
         if (this.under) {
@@ -2641,58 +2632,12 @@ var map = {
     width: 200,
     height: 200,
     tiles: [],
-    allHouses: [],
     firstBox: true,
     drawItemsAfterTilesArray: [],
     drawAfterPlayerArray: [],
     type: 'map',
+    mapID: '',
     init(){
-        // create all map tiles
-        for (var x = 0; x < this.width; x++){
-            this.tiles.push([])
-            for (var y = 0; y < this.height; y++){
-                this.tiles[x].push(mapTile.new({
-                    x: x * map.tileSize,
-                    y: y * map.tileSize,
-                }))
-            }
-        }
-
-        
-        // let tile = this.tiles[1][1]
-        // tile.holding.push( 
-        //     house.new({
-        //         x: tile.x,
-        //         y: tile.y,
-        //         houseType: 'house3L1',
-        //         tileX: tile.tileX,
-        //         tileY: tile.tileY
-        //     })
-        // )
-        // map.allHouses.push(tile.holding[0])
-
-        // tile.linkedTo = [[2, 1], [3, 1]]
-        // this.tiles[2][1].linkedFrom = [1, 1]
-        // this.tiles[3][1].linkedFrom = [1, 1]
-
-
-        
-        // tile = this.tiles[1][2]
-        // tile.holding.push( 
-        //     house.new({
-        //         x: tile.x,
-        //         y: tile.y,
-        //         houseType: 'house1U1',
-        //         tileX: tile.tileX,
-        //         tileY: tile.tileY
-        //     })
-        // )
-        // map.allHouses.push(tile.holding[0])
-
-        // tile.linkedTo = [[5, 1], [6, 1]]
-        // this.tiles[5][1].linkedFrom = [4, 1]
-        // this.tiles[6][1].linkedFrom = [4, 1]
-
         return this
     },
     draw(dt){
@@ -2790,959 +2735,181 @@ var map = {
     getTileHolding(array){
         return this.getTile(array).holding[0]
     },
-    createCommunityBox(){
-        var min = 3, 
-            max = 20, 
-            edgeGap = 10
 
-        if (rand() > .75) {
-            min = max = 3
-        }
+    // GENERATION FROM SERVER MAP
+    createMapFromWS(data){
+        console.log('create', data)
 
-        if (map.firstBox) {
-            max = 50
-            min = 40
-            map.firstBox = false
-        }
+        map.mapID = data.map.id
 
-        // create random size box
-        var randomW = randFloor(min, max)
-        var randomH = randFloor(min, max)
+        this.createAllTiles()
+        this.addRoadsToTiles(data.map.r)
+        this.addTreesToTiles(data.map.t)
+        this.addHousesToTiles(data.map.h)
 
-        // random box position, leaving 1 slot around edge guranteed
-        var randomX = randFloor(edgeGap, this.width - randomW - edgeGap)
-        var randomY = randFloor(edgeGap, this.height - randomH - edgeGap)
+        // START NEW PLAYER
+        thePlayer = player.new(data.spawnPoint)
+        requestAnimationFrame(animate)
+    },
+    createAllTiles(){
+        map.tiles = []
 
-        return {
-            x: randomX,
-            y: randomY,
-            width: randomW,
-            height: randomH,
-            centerX: Math.floor((randomX + (randomW / 2))),
-            centerY: Math.floor((randomY + (randomH / 2))),
-            shortestBoxes: [],
-            linkedTo: [],
+        for (var x = 0; x < this.width; x++){
+            this.tiles.push([])
+            for (var y = 0; y < this.height; y++){
+                this.tiles[x].push(mapTile.new({
+                    x: x * map.tileSize,
+                    y: y * map.tileSize,
+                }))
+            }
         }
     },
-    createConnectingRoadOnTile(tile){
+    addRoadsToTiles(array){
+        for (var i = array.length - 1; i >= 0; i--) {
+            let fullCorner,
+                [tileX, tileY, corner] = array[i].split(' ')
+
+            if (corner) {
+                fullCorner = 
+                    corner[0] == 't' ?
+                        'top' : 'bottom'
+
+                fullCorner += 
+                    corner[1] == 'l' ?
+                        ' left' : ' right'
+            }
+
+            map.tiles[tileX][tileY].holding.push(
+                road.new({
+                    x: tileX * map.tileSize,
+                    y: tileY * map.tileSize,
+                    corner: fullCorner
+                })
+            )
+        }
+
+        this.setSoloCircles()
+    },
+    setSoloCircles(){
+        for (var x = map.tiles.length - 1; x >= 0; x--){
+            for (var y = map.tiles[x].length - 1; y >= 0; y--){
+                if (this.validateSoloCircle(x, y)) {
+                    map.tiles[x][y].soloCircle = true
+                }
+            }
+        }
+    },
+    validateSoloCircle(x, y){
+        var tiles = map.tiles,
+            passedTest = true
+
+        // center tile can't have road
+        if (tiles[x][y].holding[0]) return false
+
+        
+        for (let adjX = -1; adjX < 2; adjX++){
+
+            if (!passedTest) break
+            
+            for (let adjY =  -1; adjY < 2; adjY++){
+
+                // surrounding tiles (8) must hold roads
+                if (
+                    (adjX || adjY) && (
+                        !tiles[x + adjX] ||
+                        !tiles[x + adjX][y + adjY] ||
+                        !tiles[x + adjX][y + adjY].holding[0]
+                    )
+                ) {
+                    passedTest = false
+                    break
+                }
+            }
+        }
+        return passedTest
+    },
+    addTreesToTiles(array){
+        for (var i = array.length - 1; i >= 0; i--) {
+            let [tileX, tileY] = array[i].split(' ')
+
+            map.tiles[tileX][tileY].holding.push(
+                tree.new({
+                    x: tileX,
+                    y: tileY,
+                })
+            )
+        }
+    },
+    addHousesToTiles(array){
+        for (var i = array.length - 1; i >= 0; i--) {
+            let [ x, y, type, color ] = array[i].split(' ')
+
+            let houseNum = type[0],
+                dir = type[1]
+                
+            type = 'house' + type
+
+            let tile = map.tiles[x][y]
+
+            this.addHouseToTile(tile, type, color)
+            this.linkHouseTiles(x, y, houseNum, dir)
+        }
+    },
+    addHouseToTile(tile, houseType, color){
         tile.holding.push(
-            road.new({
-                x: tile.x,
-                y: tile.y,
-                connectingRoad: true
+            house.new({
+                x: tile.x, 
+                y: tile.y, 
+                houseType,
+                tileX: tile.tileX,
+                tileY: tile.tileY,
+                color
             })
         )
     },
-    createCommunityZones(){
-        var newBoxes = [],
-            boxGapMin = 0,
-            boxGapMax = 2,
-            failCount = 0,
-            id = 0
+    linkHouseTiles(x, y, houseNum, dir){
+        if (houseNum == 1) return
 
-        while (newBoxes.length < 200) {
-            let newBox = this.createCommunityBox(),
-                testFailed = false
+        x = Number(x)
+        y = Number(y)
 
-            newBoxes.forEach(box => {
-                var boxGap = rand(boxGapMin, boxGapMax)
-                if (newBox.x < box.x + box.width + boxGap &&
-                    newBox.x + newBox.width + boxGap > box.x  &&
-                    newBox.y < box.y + box.height + boxGap  &&
-                    newBox.height + newBox.y  + boxGap > box.y
-                ){
-                    testFailed = true
-                    failCount++
-                }
-            })
-            if (failCount > 100) break
-            if (testFailed) continue
-            failCount = 0
-            id++
-            newBox.id = id
-            newBoxes.push(newBox)
+        let tilesToLink, 
+            xLink = 1, 
+            yLink = 1,
+            linkedTiles = []
+
+        if (houseNum == 2) tilesToLink = 2
+        if (houseNum == 3) tilesToLink = 3
+
+        if (dir == 'U' || dir == 'D') {
+            xLink = tilesToLink
+        }
+        if (dir == 'L' || dir == 'R') {
+            yLink = tilesToLink
+        }
+        for (var adjX = 0 ; adjX < xLink; adjX++){
+            for (var adjY = 0 ; adjY < yLink; adjY++){
+                // dont link main tile
+                if (!adjX && !adjY) continue
+
+                map.tiles[x + adjX][y + adjY].linkedFrom = [x, y]
+                linkedTiles.push([x + adjX, y + adjY])
+            }
         }
 
-        return newBoxes
+        map.tiles[x][y].linkedTo = linkedTiles
+
     },
-    createCommunityOuterRoads(newBoxes){
-        newBoxes.forEach(newBox => {
-            let forceConnectingRoad = false
-            if (newBox.width == 3 && newBox.height == 3){
-                // this.tiles[newBox.x+1][newBox.y+1].debug.alt2Highlight = true
-                this.tiles[newBox.x+1][newBox.y+1].soloCircle = true
-                this.tiles[newBox.x+1][newBox.y+1].holding.push(tree.new({
-                    x: newBox.x+1,
-                    y: newBox.y+1,
-                }))
-
-                // FIND SMALLEST COMMUNITY AND DONT ALLOW HOUSE
-                forceConnectingRoad = true
-            }
-            // create outer roads for box
-            for (var x = newBox.x; x < newBox.x + newBox.width; x++){
-                for (var y = newBox.y; y < newBox.y + newBox.height; y++){
-                    if (x >= newBox.x && 
-                        x < newBox.x + newBox.width &&
-                        y >= newBox.y &&
-                        y < newBox.y + newBox.height &&
-                            (x == newBox.x ||
-                            y == newBox.y ||
-                            x == newBox.x + newBox.width - 1 ||
-                            y == newBox.y + newBox.height - 1)) {
-                        let tile = this.tiles[x][y]
-                        tile.holding.push(
-                            road.new({
-                                x: tile.x,
-                                y: tile.y,
-                                forceConnectingRoad
-                            })
-                        )
-                    }
-                    this.tiles[x][y].communityHold = true
-                }
-            }
-        })
-    },
-    setCommunityShortestBoxes(newBoxes){
-        newBoxes.forEach((box, boxIndex) => {
-            let nonThisBox = newBoxes.filter(x => x != box)
-
-            let temp = nonThisBox.map(nonBox => ({
-                dist: (
-                    (box.centerX - nonBox.centerX)**2 + 
-                    (box.centerY - nonBox.centerY)**2)
-                ,
-                nonBox,
-            })).sort((a, b) => a.dist < b.dist ? -1 : 1)
-
-            // more connections for first (big) box
-            let sliceAmt = boxIndex ? 3 : 10
-            box.shortestBoxes = 
-                temp.slice(0, sliceAmt)
-                .map(distObj => distObj.nonBox)
-
-            box.linkedTo = 
-                box.shortestBoxes
-                .map(shortBox => shortBox.id)
-        })
-    },
-    createRoadsLinkingCommunities(newBoxes){
-        newBoxes.forEach(box => {
-            // [box.shortestBox, box.secondShortestBox].forEach(otherBox => {
-                box.shortestBoxes.forEach(otherBox => {
-
-                // if two communities are linked to each other
-                // unlink them, and skip the first one
-                if (
-                        box.linkedTo.includes(otherBox.id) && 
-                        otherBox.linkedTo.includes(box.id)
-                    ){
-                        box.linkedTo = 
-                            box.linkedTo
-                            .filter(x=> x !== otherBox.id)
-
-                        return
-                    }
-
-                var difX = otherBox.centerX - box.centerX,
-                    difY = otherBox.centerY - box.centerY
-
-                // first pass is horizontal
-                // second pass is vertical
-
-                // non-road is a skipped road 
-                // due to other roads being around it already
-                
-                // this prevents roads doubling up next to each other
-
-                // this variable tells the second pass if the first pass 
-                // ended on a non-road due to neighboring roads
-                // then, if the second pass ends on the first row
-                // outside of the community, it skips
-
-                // otherwise, you would get road doubling
-                // next to the community road
-                var endedOnOtherRoad = false
-
-                // draw horizontal roads
-                if (difX > 0){
-                    let hasHitCommunityBorder = false,
-                        justHitCommunityBorder = false,
-                        hasHitOtherRoad = false
-
-                    for (var x = 0; x <= difX; x++){
-                        let tile = this.tiles[box.centerX + x][box.centerY]
-
-                        // start building roads after leaving community zone
-                        if (!hasHitCommunityBorder || tile.communityHold) {
-                            if (tile.checkIfTileIsRoad(tile)) {
-                                hasHitCommunityBorder = true
-                                justHitCommunityBorder = true
-                            }
-                            continue
-                        }
-
-                        let tileAbove = this.tiles[box.centerX + x][box.centerY - 1],
-                            tileBelow = this.tiles[box.centerX + x][box.centerY + 1]
-
-                            // check for existing tiles at location and surrounding
-                        if (
-                                tile.checkIfTileIsRoad(tileAbove) ||
-                                tile.checkIfTileIsRoad(tileBelow) ||
-                                tile.holding.length
-                            ){
-                                // allow road for first neighbor road find
-                                if (hasHitOtherRoad) continue
-                                hasHitOtherRoad = true
-
-                                // unless its the first tile outside of the community zone
-                                if (justHitCommunityBorder) {
-                                    justHitCommunityBorder = false
-                                    continue
-                                }
-                                // don't place tile if it's already holding from another pass
-                                if (tile.holding.length){
-                                    continue
-                                }
-                        }
-                        else {
-                            // reset 'other road' collision check 
-                            // once the path and surrounding are clear
-                            // then, add previous tile if not already there
-                            if (hasHitOtherRoad) {
-                                hasHitOtherRoad = false
-                                let previousTile = this.tiles[box.centerX + x - 1][box.centerY]
-                                if (!previousTile.holding?.length){
-                                    this.createConnectingRoadOnTile(previousTile)
-                                }
-                            }
-                        }
-                        if (justHitCommunityBorder) justHitCommunityBorder = false
-                        this.createConnectingRoadOnTile(tile)
-                    }
-                    if (hasHitOtherRoad) {
-                        endedOnOtherRoad = true
-                    }
-                }
-                else if (difX < 0){
-                    let hasHitCommunityBorder = false,
-                        justHitCommunityBorder = false,
-                        hasHitOtherRoad = false
-
-                    for (var x = 0; x <= Math.abs(difX); x++){
-                        let tile = this.tiles[box.centerX - x][box.centerY]
-
-                        // start building roads after leaving community zone
-                        if (!hasHitCommunityBorder || tile.communityHold) {
-                            if (tile.checkIfTileIsRoad(tile)) {
-                                hasHitCommunityBorder = 
-                                justHitCommunityBorder = true
-                            }
-                            continue
-                        }
-
-                        let tileAbove = this.tiles[box.centerX - x][box.centerY - 1],
-                            tileBelow = this.tiles[box.centerX - x][box.centerY + 1]
-
-                            // check for existing tiles at location and surrounding
-                        if (
-                                tile.checkIfTileIsRoad(tileAbove) ||
-                                tile.checkIfTileIsRoad(tileBelow) ||
-                                tile.holding.length
-                            ){
-                                // allow road for first neighbor road find
-                                if (hasHitOtherRoad) continue
-                                hasHitOtherRoad = true
-
-                                // unless its the first tile outside of the community zone
-                                if (justHitCommunityBorder) {
-                                    justHitCommunityBorder = false
-                                    continue
-                                }
-                                // don't place tile if it's already holding
-                                if (tile.holding.length){
-                                    continue
-                                }
-                        }
-                        else {
-                            // reset 'other road' collision check 
-                            // once the path and surrounding are clear
-                            // then, add previous tile if not already there
-                            if (hasHitOtherRoad) {
-                                hasHitOtherRoad = false
-                                let previousTile = this.tiles[box.centerX - x + 1][box.centerY]
-                                if (!previousTile.holding?.length){
-                                    this.createConnectingRoadOnTile(previousTile)
-                                }
-                            }
-                        }
-                        if (justHitCommunityBorder) justHitCommunityBorder = false
-                        this.createConnectingRoadOnTile(tile)
-                    }
-                    if (hasHitOtherRoad) {
-                        endedOnOtherRoad = true
-                    }
-                }
-
-                // VERTICAL ROADS
-                if (difY > 0){
-                    let hasHitCommunityBorder = false,
-                        justHitCommunityBorder = false,
-                        hasHitOtherRoad = false
-
-                    for (var y = 0; y <= difY; y++){
-                        let tile = this.tiles[otherBox.centerX][otherBox.centerY - y]
-
-                        if (justHitCommunityBorder && difY == y && endedOnOtherRoad){
-                            break
-                        }
-
-                        // start building roads after leaving community zone
-                        if (!hasHitCommunityBorder || tile.communityHold) {
-                            if (tile.checkIfTileIsRoad(tile)) {
-                                hasHitCommunityBorder = 
-                                justHitCommunityBorder = true
-                            }
-                            continue
-                        }
-
-                        let tileLeft = this.tiles[otherBox.centerX - 1][otherBox.centerY - y],
-                            tileRight = this.tiles[otherBox.centerX + 1][otherBox.centerY - y]
-
-                        // check for existing tiles at location and surrounding
-                        if (
-                                tile.checkIfTileIsRoad(tileLeft) ||
-                                tile.checkIfTileIsRoad(tileRight) ||
-                                tile.holding.length
-                            ){
-                                // allow road for first neighbor road find
-                                if (hasHitOtherRoad) continue
-                                hasHitOtherRoad = true
-
-                                // unless its the first tile outside of the community zone
-                                if (justHitCommunityBorder) {
-                                    justHitCommunityBorder = false
-                                    continue
-                                }
-                                // don't place tile if it's already holding
-                                if (tile.holding.length){
-                                    continue
-                                }
-                        }
-                        else {
-                            // reset 'other road' collision check 
-                            // once the path and surrounding are clear
-                            // then, add previous tile if not already there
-                            if (hasHitOtherRoad) {
-                                hasHitOtherRoad = false
-                                let previousTile = this.tiles[otherBox.centerX][otherBox.centerY - y + 1]
-                                if (!previousTile.holding?.length){
-                                    this.createConnectingRoadOnTile(previousTile)
-                                }
-                            }
-                        }
-                        if (justHitCommunityBorder) justHitCommunityBorder = false
-                        this.createConnectingRoadOnTile(tile)
-                    }
-                }
-                else if (difY < 0){
-                    let hasHitCommunityBorder = false,
-                        justHitCommunityBorder = false,
-                        hasHitOtherRoad = false
-
-                    for (var y = 0; y <= Math.abs(difY); y++){
-                        let tile = this.tiles[otherBox.centerX][otherBox.centerY + y]
-
-                        if (justHitCommunityBorder &&  Math.abs(difY) == y && endedOnOtherRoad){
-                            break
-                        }
-
-                        // start building roads after leaving community zone
-                        if (!hasHitCommunityBorder || tile.communityHold) {
-                            if (tile.checkIfTileIsRoad(tile)) {
-                                hasHitCommunityBorder = 
-                                justHitCommunityBorder = true
-                            }
-                            continue
-                        }
-
-                        let tileLeft = this.tiles[otherBox.centerX - 1][otherBox.centerY + y],
-                            tileRight = this.tiles[otherBox.centerX + 1][otherBox.centerY + y]
-
-                        // check for existing tiles at location and surrounding
-                        if (
-                                tile.checkIfTileIsRoad(tileLeft) ||
-                                tile.checkIfTileIsRoad(tileRight) ||
-                                tile.holding.length
-                            ){
-                                // allow road for first neighbor road find
-                                if (hasHitOtherRoad) continue
-                                hasHitOtherRoad = true
-
-                                // unless its the first tile outside of the community zone
-                                if (justHitCommunityBorder) {
-                                    justHitCommunityBorder = false
-                                    continue
-                                }
-                                // don't place tile if it's already holding
-                                if (tile.holding.length){
-                                    continue
-                                }
-                        }
-                        else {
-                            // reset 'other road' collision check 
-                            // once the path and surrounding are clear
-                            // then, add previous tile if not already there
-                            if (hasHitOtherRoad) {
-                                hasHitOtherRoad = false
-                                let previousTile = this.tiles[otherBox.centerX][otherBox.centerY + y - 1]
-                                if (!previousTile.holding?.length){
-                                    this.createConnectingRoadOnTile(previousTile)
-                                }
-                            }
-                        }
-                        if (justHitCommunityBorder) justHitCommunityBorder = false
-                        this.createConnectingRoadOnTile(tile)
-                    }
-                }
-            })
-        })
-    },
-    cleanUpDeadEndRoads(){
-        function getConnectedRoads(x, y){
-            connectedRoads = []
-            if (theMap.tiles[x - 1][y].holding[0]) 
-                connectedRoads.push( {x: -1, y: 0} ) // left
-
-            if (theMap.tiles[x + 1][y].holding[0]) 
-                connectedRoads.push( {x: 1, y: 0} ) // right
-
-            if (theMap.tiles[x][y - 1].holding[0]) 
-                connectedRoads.push( {x: 0, y: -1} ) // up
-
-            if (theMap.tiles[x][y + 1].holding[0]) 
-                connectedRoads.push( {x: 0, y: 1} ) // down
-
-            return connectedRoads
-        }
-        function debugHighlight(currentTile, firstPass){
-            if (OPTIONS.DEV.DEBUG.HIGHLIGHT_REMOVED_TILES) {
-                if (firstPass) currentTile.debug.altHighlight = true
-                else currentTile.debug.highlight = true
-            }
-        }
-
-        let deleteCount = 0,
-            allRoads = 
-                theMap.tiles.reduce((a, c) => 
-                    a.concat(c.filter(tile => 
-                            tile.holding[0]?.type == 'road'
-                    ))
-                , [])
-
-        for (var i = 0, length = allRoads.length; i < length; i++) {
-            if (!allRoads[i].holding[0]) continue
-            let firstPass = true,
-                tileX = allRoads[i].x / map.tileSize,
-                tileY = allRoads[i].y / map.tileSize,
-                connectedRoads = getConnectedRoads(tileX, tileY)
-
-            while (connectedRoads.length <= 1) {
-                let currentTile = theMap.tiles[tileX][tileY]
-                
-                debugHighlight(currentTile, firstPass)
-                firstPass = false
-
-                currentTile.holding.pop()
-                deleteCount++
-
-                if (!connectedRoads.length) break
-
-                tileX += connectedRoads[0].x
-                tileY += connectedRoads[0].y
-                
-                connectedRoads = getConnectedRoads(tileX, tileY)
-            }
-        }
-        if (OPTIONS.DEV.DEBUG.HIGHLIGHT_REMOVED_TILES)
-            console.log('Road Clean Up Count: ', deleteCount)
-    },
-    setAllCornerRoads(){
-        for (var x = 0, lengthX = this.tiles.length; x < lengthX; x++){
-            for (var y = 0, lengthY = this.tiles[x].length; y < lengthY; y++){
-                let tileHolding = this.tiles[x][y].holding[0]
-                if (tileHolding){
-                    if (
-                        !this.tiles[x][y - 1].holding[0] && 
-                        !this.tiles[x + 1][y].holding[0] && 
-                        this.tiles[x][y + 1].holding[0] &&
-                        this.tiles[x - 1][y].holding[0]
-                    )
-                    tileHolding.corner = 'top right'
-                        
-                    else if (
-                        !this.tiles[x][y - 1].holding[0] && 
-                        this.tiles[x + 1][y].holding[0] && 
-                        this.tiles[x][y + 1].holding[0] &&
-                        !this.tiles[x - 1][y].holding[0]
-                    )
-                    tileHolding.corner = 'top left'
-
-                    else if (
-                        this.tiles[x][y - 1].holding[0] && 
-                        this.tiles[x + 1][y].holding[0] && 
-                        !this.tiles[x][y + 1].holding[0] &&
-                        !this.tiles[x - 1][y].holding[0]
-                    )
-                    tileHolding.corner = 'bottom left'
-
-                    else if (
-                        this.tiles[x][y - 1].holding[0] && 
-                        !this.tiles[x + 1][y].holding[0] && 
-                        !this.tiles[x][y + 1].holding[0] &&
-                        this.tiles[x - 1][y].holding[0]
-                    )
-                    tileHolding.corner = 'bottom right'
-                }
-            }
-        }
-    },
-    createCommunityInnerRoads(newBoxes){
-        function randomChanceToDeleteRoadBlocksForVariety(i){
-            return (rand() > (!i ? .98 : .94))
-        }
-
-        newBoxes.forEach((newBox, i) => {
-
-            // create inner road columns
-            var lastCol = newBox.x
-            for (var x = newBox.x + 1; x < newBox.x + newBox.width - 3; x++){
-                if (x - lastCol < 3 || Math.random() < .7) continue
-                lastCol = x
-                for (var y = newBox.y; y < newBox.y + newBox.height; y++){
-                    if (randomChanceToDeleteRoadBlocksForVariety(i)) continue
-                    let tile = this.tiles[x][y]
-                    if (tile.holding.length) continue
-                    tile.holding.push(
-                            road.new({
-                            x: tile.x,
-                            y: tile.y,
-                        })
-                    )
-                } 
-            }
-
-            // create inner road columns
-            var lastRow = newBox.y
-            for (var y = newBox.y + 1; y < newBox.y + newBox.height - 3; y++){
-                if (y - lastRow < 3 || Math.random() < .7) continue
-                lastRow = y
-                for (var x = newBox.x; x < newBox.x + newBox.width; x++){
-                    if (randomChanceToDeleteRoadBlocksForVariety(i)) continue
-                    let tile = this.tiles[x][y]
-                    if (tile.holding.length) continue
-                    tile.holding.push(
-                            road.new({
-                            x: tile.x,
-                            y: tile.y,
-                        })
-                    )
-                } 
-            }
-        })
-    },
-    randomPlaceHouses(){
-        var globalChance = 1,
-
-            house1Chance = .2 * globalChance,
-            house2Chance = .1 * globalChance,
-            house3Chance = .05 * globalChance
-
-        function validateNonCornerNonConnectingRoads(...args){
-            // checks [x, y] of every [] passed
-            var testPassed = true
-            for (var i = 0, length = args.length; i < length; i++){
-                if (!(
-                    theMap.tiles[args[i][0]][args[i][1]].holding[0] &&
-                    theMap.tiles[args[i][0]][args[i][1]].holding[0].__proto__ == road &&
-                    !theMap.tiles[args[i][0]][args[i][1]].holding[0].corner &&
-                    !theMap.tiles[args[i][0]][args[i][1]].holding[0].connectingRoad
-                )) {
-                    testPassed = false
-                    break
-                }
-            }
-            return testPassed
-        }
-        function validateTilesNotHoldingOrLinked(...args){
-            // checks [x, y] of every [] passed
-            var testPassed = true
-            for (var i = 0, length = args.length; i < length; i++){
-
-                let tile = theMap.tiles[args[i][0]][args[i][1]]
-
-                if (tile.holding[0] || tile.linkedFrom) {
-                    testPassed = false
-                    break
-                }
-            }
-            return testPassed
-        }
-        function addHouseToTile(tile, houseType){
-            tile.holding.push(
-                house.new({
-                    x: tile.x, 
-                    y: tile.y, 
-                    houseType,
-                    tileX: tile.tileX,
-                    tileY: tile.tileY
-                })
-            )
-            map.allHouses.push(tile.holding[0])
-        }
-
-        // create top houses
-        for (var x = 0; x < this.tiles.length; x++){
-            for (var y = 0; y < this.tiles[x].length; y++){
-                if (
-                        validateNonCornerNonConnectingRoads([x, y]) &&
-                        validateTilesNotHoldingOrLinked([x, y - 1])
-                    ){
-                    if (rand() > house1Chance) continue
-                    addHouseToTile(
-                        this.tiles[x][y - 1], 
-                        `house1D${randFloor(1, 3)}`
-                    )
-                }
-            }
-        }
-        // create bottom houses
-        for (var x = 0; x < this.tiles.length; x++){
-            for (var y = 0; y < this.tiles[x].length; y++){
-                if (
-                        validateNonCornerNonConnectingRoads([x, y]) &&
-                        validateTilesNotHoldingOrLinked([x, y + 1])
-                    ){
-                    if (rand() > house1Chance) continue
-                    addHouseToTile(
-                        this.tiles[x][y + 1], 
-                        `house1U${randFloor(1, 3)}`
-                    )
-                }
-            }
-        }
-        // create left houses
-        for (var x = 0; x < this.tiles.length; x++){
-            for (var y = 0; y < this.tiles[x].length; y++){
-                if (
-                        validateNonCornerNonConnectingRoads([x, y]) &&
-                        validateTilesNotHoldingOrLinked([x + 1, y])
-                    ){
-                    if (rand() > house1Chance) continue
-                    addHouseToTile(
-                        this.tiles[x + 1][y], 
-                        `house1L${randFloor(1, 3)}`
-                    )
-                }
-            }
-        }
-        // create right houses
-        for (var x = 0; x < this.tiles.length; x++){
-            for (var y = 0; y < this.tiles[x].length; y++){
-                if (
-                        validateNonCornerNonConnectingRoads([x, y]) &&
-                        validateTilesNotHoldingOrLinked([x - 1, y])
-                    ){
-                    if (rand() > house1Chance) continue
-                    addHouseToTile(
-                        this.tiles[x - 1][y], 
-                        `house1R${randFloor(1, 3)}`
-                    )
-                }
-            }
-        }
-
-        // create DOWN house2
-        for (var x = 0; x < this.tiles.length; x++){
-            for (var y = 0; y < this.tiles[x].length; y++){
-
-                if (
-                        validateNonCornerNonConnectingRoads([x, y], [x + 1, y]) &&
-                        validateTilesNotHoldingOrLinked([x, y - 1], [x + 1, y - 1])
-                    ){
-
-                    if (rand() > house2Chance) continue
-
-                    let tile = this.tiles[x][y - 1]
-                    
-                    addHouseToTile(tile, `house2D${randFloor(1, 3)}`)
-                    
-                    tile.linkedTo = [[x + 1, y - 1]]
-                    this.tiles[x + 1][y - 1].linkedFrom = [x, y - 1]
-                }
-            }
-        }
-        // create UP house2
-        for (var x = 0; x < this.tiles.length; x++){
-            for (var y = 0; y < this.tiles[x].length; y++){
-
-                if (
-                        validateNonCornerNonConnectingRoads([x, y], [x + 1, y]) &&
-                        validateTilesNotHoldingOrLinked([x, y + 1], [x + 1, y + 1])
-                    ){
-
-                    if (rand() > house2Chance) continue
-
-                    let tile = this.tiles[x][y + 1]
-                    
-                    addHouseToTile(tile, `house2U${randFloor(1, 3)}`)
-                    
-                    tile.linkedTo = [[x + 1, y + 1]]
-                    this.tiles[x + 1][y + 1].linkedFrom = [x, y + 1]
-                }
-            }
-        }
-        // create LEFT house2
-        for (var x = 0; x < this.tiles.length; x++){
-            for (var y = 0; y < this.tiles[x].length; y++){
-
-                if (
-                        validateNonCornerNonConnectingRoads([x, y], [x, y + 1]) &&
-                        validateTilesNotHoldingOrLinked([x + 1, y], [x + 1, y + 1])
-                    ){
-
-                    if (rand() > house2Chance) continue
-
-                    let tile = this.tiles[x + 1][y]
-                    
-                    addHouseToTile(tile, `house2L${randFloor(1, 3)}`)
-
-                    tile.linkedTo = [[x + 1, y + 1]]
-                    this.tiles[x + 1][y + 1].linkedFrom = [x + 1, y]
-                }
-            }
-        }
-        // create RIGHT house2
-        for (var x = 0; x < this.tiles.length; x++){
-            for (var y = 0; y < this.tiles[x].length; y++){
-
-                if (
-                    validateNonCornerNonConnectingRoads([x, y], [x, y + 1]) &&
-                    validateTilesNotHoldingOrLinked([x - 1, y], [x - 1, y + 1])
-                ){
-
-                    if (rand() > house2Chance) continue
-
-                    let tile = this.tiles[x - 1][y]
-                    
-                    addHouseToTile(tile, `house2R${randFloor(1, 3)}`)
-                    
-                    tile.linkedTo = [[x - 1, y + 1]]
-                    this.tiles[x - 1][y + 1].linkedFrom = [x - 1, y]
-                }
-            }
-        }
-        
-        // door DOWN house3
-        for (var x = 0; x < this.tiles.length; x++){
-            for (var y = 0; y < this.tiles[x].length; y++){
-
-                if (
-                    validateNonCornerNonConnectingRoads([x, y], [x + 1, y], [x + 2, y]) &&
-                    validateTilesNotHoldingOrLinked([x, y - 1], [x + 1, y - 1], [x + 2, y - 1])
-                ){
-
-                    if (rand() > house3Chance) continue
-
-                    let tile = this.tiles[x][y - 1]
-                    
-                    addHouseToTile(tile, `house3D1`)
-                    
-                    tile.linkedTo = [[x + 1, y - 1], [x + 2, y - 1]]
-                    this.tiles[x + 1][y - 1].linkedFrom = [x, y - 1]
-                    this.tiles[x + 2][y - 1].linkedFrom = [x, y - 1]
-                }
-            }
-        }
-        // door UP house3
-        for (var x = 0; x < this.tiles.length; x++){
-            for (var y = 0; y < this.tiles[x].length; y++){
-
-                if (
-                    validateNonCornerNonConnectingRoads([x, y], [x + 1, y], [x + 2, y]) &&
-                    validateTilesNotHoldingOrLinked([x, y + 1], [x + 1, y + 1], [x + 2, y + 1])
-                ){
-
-                    if (rand() > house3Chance) continue
-
-                    let tile = this.tiles[x][y + 1]
-                    
-                    addHouseToTile(tile, `house3U1`)
-                    
-                    tile.linkedTo = [[x + 1, y + 1], [x + 2, y + 1]]
-                    this.tiles[x + 1][y + 1].linkedFrom = [x, y + 1]
-                    this.tiles[x + 2][y + 1].linkedFrom = [x, y + 1]
-                }
-            }
-        }
-        // door LEFT house3
-        for (var x = 0; x < this.tiles.length; x++){
-            for (var y = 0; y < this.tiles[x].length; y++){
-
-                if (
-                    validateNonCornerNonConnectingRoads([x, y], [x, y + 1], [x, y + 2]) &&
-                    validateTilesNotHoldingOrLinked([x + 1, y], [x + 1, y + 1], [x + 1, y + 2])
-                ){
-
-                    if (rand() > house3Chance) continue
-
-                    let tile = this.tiles[x + 1][y]
-                    
-                    addHouseToTile(tile, `house3L1`)
-
-                    tile.linkedTo = [[x + 1, y + 1], [x + 1, y + 2]]
-                    this.tiles[x + 1][y + 1].linkedFrom = [x + 1, y]
-                    this.tiles[x + 1][y + 2].linkedFrom = [x + 1, y]
-                }
-            }
-        }
-        // door RIGHT house3
-        for (var x = 0; x < this.tiles.length; x++){
-            for (var y = 0; y < this.tiles[x].length; y++){
-
-                if (
-                    validateNonCornerNonConnectingRoads([x, y], [x, y + 1], [x, y + 2]) &&
-                    validateTilesNotHoldingOrLinked([x - 1, y], [x - 1, y + 1], [x - 1, y + 2])
-                ){
-
-                    if (rand() > house3Chance) continue
-
-                    let tile = this.tiles[x - 1][y]
-                    
-                    addHouseToTile(tile, `house3R1`)
-
-                    tile.linkedTo = [[x - 1, y + 1], [x - 1, y + 2]]
-                    this.tiles[x - 1][y + 1].linkedFrom = [x - 1, y]
-                    this.tiles[x - 1][y + 2].linkedFrom = [x - 1, y]
-                }
-            }
-        }
-    },
-    randomPlaceTrees(){
-        var allEmptyTiles = 
-            theMap.tiles.reduce((a, c) =>
-                a.concat(c.filter(tile =>
-                    !tile.holding[0] && !tile.linkedFrom
-                ))
-            , [])
-
-        var edgeGap = 13 * map.tileSize
-        for (var i = 0, length = allEmptyTiles.length; i < length; i++) {
-            let tile = allEmptyTiles[i]
-            if (
-                tile.x < edgeGap ||
-                tile.x > theMap.width * map.tileSize - edgeGap ||
-                tile.y < edgeGap ||
-                tile.y > theMap.height * map.tileSize - edgeGap
-                ) continue
-
-            if (rand() > .99) {
-                tile.holding.push(tree.new({
-                    x: tile.x/20,
-                    y: tile.y/20
-                }))
-            }
-        }
-    },
-    pickRandomPlayerSpawnPoint(){
-        var allRoads = 
-            this.tiles.reduce((a, c) =>
-                a.concat(c.filter(tile =>
-                    tile.holding[0]?.type == 'road'
-                    ))
-            , [])
-
-        var tile = allRoads[randFloor(allRoads.length)]
-        // tile.debug.highlight = true
-
-        // center of tile
-        return [
-            tile.x + map.tileSize / 2,
-            tile.y + map.tileSize / 2
-        ]
-    },
-    generateLootSpawns(){
-        var all = this.allHouses
-
-        for (var i = 0, length = all.length; i < length; i++) {
-
-            // some houses don't get loot
-            if (rand() > .5) continue
-
-            var tempSpawnArray = [...all[i].spawnPoints],
-                spawnMax = Math.floor(tempSpawnArray.length / 2),
-                spawnCount = randFloor(1, spawnMax)
-
-            // houses with loot get only 1 loot sometimes
-            if (rand() > .5) spawnCount = 1
-
-            for (let j = spawnCount; j; j--) {
-                let randomSpawnIndex = randFloor(tempSpawnArray.length),
-                    sp = tempSpawnArray[randomSpawnIndex],
-                    tag = sp.tag[0]
-
-                all[i].items.push(
-                    item.new({
-                        itemType: 'water',
-                        x: sp.x,
-                        y: sp.y,
-                        tileX: all[i].tileX,
-                        tileY: all[i].tileY,
-                        style: {
-                            type: 'circle',
-                            r: .25
-                        },
-                        tag,
-                    })
-                )
-                tempSpawnArray.splice(randomSpawnIndex, 1)
-            }
-        }
-    },
-    generate(){
-        var newBoxes = this.createCommunityZones()
-
-        this.createCommunityOuterRoads(newBoxes)
-
-        this.setCommunityShortestBoxes(newBoxes)
-
-        this.createRoadsLinkingCommunities(newBoxes)
-
-        this.createCommunityInnerRoads(newBoxes)
-
-        this.cleanUpDeadEndRoads()
-
-        this.setAllCornerRoads()
-
-        this.randomPlaceHouses()
-
-        this.randomPlaceTrees()
-
-        this.generateLootSpawns()
-    }
 }
 
 var player = {
     r: 1,
     color: '#292',
     type: 'player',
-    new(){
-        return Object.create(this).init()
+    new(spawnPointArray){
+        return Object.create(this).init(spawnPointArray)
     },
-    init(){
-        // SPAWN RANDOM ROAD
-        var [spawnX, spawnY] = map.pickRandomPlayerSpawnPoint()
+    init([spawnX, spawnY]){
         this.x = spawnX
         this.y = spawnY
 
@@ -3750,14 +2917,6 @@ var player = {
             this.x = 20
             this.y = 20
         }
-
-        // SPAWN SPECIFIC LOCATION
-        // this.x = 20
-        // this.y = 20
-
-        // SPAWN MAP CENTER
-        // this.x = theMap.width / 2 * map.tileSize
-        // this.y = theMap.height / 2 * map.tileSize
 
         return this
     },
@@ -4040,9 +3199,8 @@ var player = {
         y: 20,
         width: 10,
         height: 20,
-        openState: true,
+        openState: false,
         selectedIndex: 0,
-        // list: [['yo', 'sup'], ['yo', 'sup'], ['yo', 'sup'], ['yo', 'sup'], ['yo', 'sup'], ['yo', 'sup']],
         list: [],
         updateList(){
             this.list = []
@@ -4698,7 +3856,6 @@ const animate = (function animWrap(){
 })()
 
 /////////////////////////////
-/////////////////////////////
 
 const websocket = {
     ws: null,
@@ -4752,7 +3909,7 @@ const websocket = {
                 break
 
             case 'map':
-                console.log(data.map)
+                map.createMapFromWS(data)
                 break
         }
     },
@@ -4788,16 +3945,27 @@ const websocket = {
         },
     },
     handleSocketInit(data){
+        // server didn't find your id
+        // so you're this id now
+        // map will have been sent if needed
         if (data.force) {
             return this.id = data.id
         }
 
+        // you didn't have an id
+        // so you're this id now
         else if (!this.id) {
             this.id = data.id
         }
+
+        // you did or didn't have an id
+        // and are verifying with the server
+        // server returns another init
+        // with verified id, and map if needed
         this.sendSocketObj({
             type: 'init',
             id: this.id,
+            mID: map.mapID
         })
     },
 }
