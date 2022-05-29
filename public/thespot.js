@@ -2743,9 +2743,9 @@ var map = {
         map.mapID = data.map.id
 
         this.createAllTiles()
+        this.addHousesToTiles(data.map.h)
         this.addRoadsToTiles(data.map.r)
         this.addTreesToTiles(data.map.t)
-        this.addHousesToTiles(data.map.h)
 
         // START NEW PLAYER
         thePlayer = player.new(data.spawnPoint)
@@ -2803,7 +2803,7 @@ var map = {
         var tiles = map.tiles,
             passedTest = true
 
-        // center tile can't have road
+        // center tile can't have road or house
         if (tiles[x][y].holding[0]) return false
 
         
@@ -2814,11 +2814,14 @@ var map = {
             for (let adjY =  -1; adjY < 2; adjY++){
 
                 // surrounding tiles (8) must hold roads
+                // (adjX || adjY) skips the center tile
+                // since this tile should be empty
                 if (
                     (adjX || adjY) && (
                         !tiles[x + adjX] ||
                         !tiles[x + adjX][y + adjY] ||
-                        !tiles[x + adjX][y + adjY].holding[0]
+                        !tiles[x + adjX][y + adjY].holding[0] ||
+                        tiles[x + adjX][y + adjY].holding[0].__proto__ != road
                     )
                 ) {
                     passedTest = false
@@ -2880,6 +2883,14 @@ var map = {
 
         if (houseNum == 2) tilesToLink = 2
         if (houseNum == 3) tilesToLink = 3
+
+        // with non rectangle houses
+        // like an L shaped house
+        // we need a map to figure out
+        // which tiles to skip
+
+        // but we don't have those yet
+        // so this works for now
 
         if (dir == 'U' || dir == 'D') {
             xLink = tilesToLink
@@ -2986,10 +2997,12 @@ var player = {
         tileRow = Math.floor(this.y / map.tileSize)
 
         // MAIN MAP WALL COLLISION
-        if (tileRow + dx <= 0 ||
-            tileCol + dy <= 0 ||
-            tileRow + dx >= theMap.width - 1 ||
-            tileCol + dy >= theMap.height - 1) {
+        if (
+            tileRow <= 0 ||
+            tileCol <= 0 ||
+            tileRow >= theMap.width - 1 ||
+            tileCol >= theMap.height - 1
+        ) {
             if (this.x - this.r + dx < 0) colX = true
             if (this.y - this.r + dy < 0) colY = true
             if (this.x + this.r + dx > theMap.width * map.tileSize) colX = true
@@ -3471,6 +3484,7 @@ var chat = {
     closeTimeout: null,
     chatOpenFromMouseOver: false,
     worldMsgArray: [],
+    viewState: false,
     init(){
         this.wrap = el('.div-chat-wrap')
         this.wrap.onclick = this.view.handleViewClick
@@ -3494,33 +3508,55 @@ var chat = {
     openChat(){
         chat.cancelCloseTimeout()
         this.wrap.setAttribute('show', '')
+        this.viewState = true
     },
     closeChat(){
         this.wrap.removeAttribute('show')
         this.chatOpenFromMouseOver = false
+        this.viewState = false
     },
 
     io: {
         handleReceiveMessage(data){
+            // console.log(data)
+
+            // if message received is from self
+            if (data.id == thePlayer.id) {
+                if (zoom.current == 80) {
+                    chat.worldMsg.new({
+                        text: data.message,
+                        x: thePlayer.preZoomedX,
+                        y: thePlayer.preZoomedY,
+                    })
+                }
+                else {
+                    chat.worldMsg.new({
+                        text: data.message,
+                        x: thePlayer.x,
+                        y: thePlayer.y,
+                    })
+                }
+            }
+
+            // message from other player
+            else {
+                var found = allOtherPlayers.find(otherPlyr => {
+                    return otherPlyr.id == data.id
+                })
+                if (!found) return console.log('this shouldnt happen')
+                chat.worldMsg.new({
+                    text: data.message,
+                    x: found.x,
+                    y: found.y,
+                })
+            }
+
             chat.view.addMessage({
                 icons: data.icons,
-                user: data.user,
+                user: data.id,
                 msg: data.message
             })
-            if (zoom.current == 80) {
-                chat.worldMsg.new({
-                    text: data.message,
-                    x: thePlayer.preZoomedX,
-                    y: thePlayer.preZoomedY,
-                })
-            }
-            else {
-                chat.worldMsg.new({
-                    text: data.message,
-                    x: thePlayer.x,
-                    y: thePlayer.y,
-                })
-            }
+
             if (zoom.current > 5) animate()
         },
         handleSendMessage(msg){
@@ -3620,6 +3656,10 @@ var chat = {
                 this.ref.childNodes[0].remove()
             }
             this.scrollToBottom()
+
+            var shouldAutoClose = !chat.viewState
+            chat.openChat()
+            if (shouldAutoClose) chat.startCloseTimeout()
         },
         scrollToBottom(){
             this.ref.scrollTop = this.ref.scrollHeight
@@ -3841,6 +3881,8 @@ const animate = (function animWrap(){
         theMap.drawItemsAfterTiles(dtChange)
     
         thePlayer.draw()
+
+        allOtherPlayers.forEach(plyr => plyr.draw())
     
         theMap.drawAfterPlayer()
 
@@ -3863,6 +3905,28 @@ const websocket = {
     init(){
         this.createWebSocket()
         this.setSocketListeners()
+
+        this.lastX = 0
+        this.lastY = 0
+    },
+    update(){
+        if (
+            this.ws.readyState == 1 &&
+            zoom.current < 5 && (
+                this.lastX != thePlayer.x ||
+                this.lastY != thePlayer.y
+            )
+        ) {
+            this.lastX = thePlayer.x 
+            this.lastY = thePlayer.y
+
+            this.sendSocketObj({
+                type: 'move',
+                x: thePlayer.x,
+                y: thePlayer.y
+            })
+        }
+        setTimeout(this.update.bind(this), 1000/60)
     },
     createWebSocket(){
         this.ws = 
@@ -3910,6 +3974,16 @@ const websocket = {
 
             case 'map':
                 map.createMapFromWS(data)
+                thePlayer.id = data.playerID
+                this.update()
+                break
+
+            case 'update':
+                this.handleServerUpdate(data)
+                break
+
+            case 'test':
+                console.log(data.message)
                 break
         }
     },
@@ -3918,13 +3992,13 @@ const websocket = {
 
         this.rejoin.reset()
 
-        console.log('WebSocket reconnected: ', new Date())
+        console.log('WebSocket reconnected: ', String(new Date()).slice(0, -33))
     },
     handleSocketClose(){
         if (!this.rejoin.state) {
             this.rejoin.state = true
 
-            console.log('WebSocket disconnected: ', new Date())
+            console.log('WebSocket disconnected: ', String(new Date()).slice(0, -33))
         }
 
         this.rejoin.timeout = 
@@ -3968,4 +4042,88 @@ const websocket = {
             mID: map.mapID
         })
     },
+    handleServerUpdate(data){
+
+        if (data.players?.length) {
+
+            // make array of all playerIDs sent from server update
+            var playerIDs = data.players.map(plyr => plyr.id)
+
+            // for each player sent, create new or update it
+            data.players.forEach(plyr => {
+                let foundP = allOtherPlayers.find(otherP => otherP.id == plyr.id)
+
+                if (!foundP) otherPlayer.new(plyr)
+                else foundP.updateLocation(plyr)
+
+            })
+
+            // remove players that exists
+            // but weren't sent via server update
+            allOtherPlayers.forEach(plyr => {
+                if (!playerIDs.includes(plyr.id)) plyr.remove()
+            })
+        }
+        // if server update sent no players
+        // remove all other players
+        else {
+            if (allOtherPlayers.length) {
+                allOtherPlayers.forEach(plyr => plyr.remove())
+            }
+        }
+    },
 }
+
+var allOtherPlayers = []
+
+var otherPlayer = {
+    r: 1,
+    color: '#292',
+    type: 'player',
+    new(obj){
+        return Object.create(this).init(obj)
+    },
+    init( { x, y, id } ){
+        this.x = this.drawX = x
+        this.y = this.drawY = y
+
+        this.id = id
+
+        allOtherPlayers.push(this)
+
+        // console.log('other player created')
+
+        return this
+    },
+    remove(){
+        var index = allOtherPlayers.indexOf(this)
+
+        if (index == -1) return console.log('tried to remove other player but none found')
+
+        allOtherPlayers.splice(index, 1)
+    },
+    updateLocation( { x, y } ){
+        this.x = x
+        this.y = y
+        // console.log('other player location updated')
+    },
+    draw(){
+
+        // smooth out movement animation
+        this.drawX = (this.drawX + this.x) * .5
+        this.drawY = (this.drawY + this.y) * .5
+
+
+        c.beginPath()
+        c.arc(
+            canvas.width / 2 - vmaxToPx(thePlayer.x - this.drawX),
+            canvas.height / 2 - vmaxToPx(thePlayer.y - this.drawY),
+            vmaxToPx(this.r * (zoom.current > 5 ? zoom.current/3 : 1)), // change player size when zoomed out
+            0, 
+            Math.PI * 2, 
+            false
+        )
+        c.fillStyle = this.color
+        c.fill()
+    },
+};

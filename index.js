@@ -18,6 +18,29 @@ app.listen(
             'Express Listening: ', 
             app.get('port')
         )
-        console.log()
     }
 ) 
+
+
+// ADD FILE / LINE TRACE TO CONSOLE MESSAGES
+// https://stackoverflow.com/a/60305881/15999216
+
+const path = require('path');
+
+['debug', 'log', 'warn', 'error'].forEach((methodName) => {
+
+    const originalLoggingMethod = console[methodName];
+
+    console[methodName] = (...theArguments) => {
+
+        const originalPrepareStackTrace = Error.prepareStackTrace;
+        Error.prepareStackTrace = (_, stack) => stack;
+        const callee = new Error().stack[1];
+        Error.prepareStackTrace = originalPrepareStackTrace;
+
+        const relativeFileName = path.basename(callee.getFileName(), '.js');
+        const prefix = `${relativeFileName} : ${callee.getLineNumber()}`;
+
+        originalLoggingMethod(...theArguments, "\x1b[36m", prefix, '\n', "\x1b[0m");
+    };
+});
