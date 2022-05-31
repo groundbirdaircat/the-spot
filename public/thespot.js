@@ -2992,6 +2992,12 @@ var player = {
         this.setTilePosition()
 
     },
+    setUnderHouseState(bool){
+        if (this.underHouse == bool) return
+
+        this.underHouse = bool
+        chat.view.setTitleHouseOrNot()
+    },
     checkCollision(dx, dy){
         var colX = false, colY = false
 
@@ -3085,10 +3091,12 @@ var player = {
                                 }
                         }
                         if (count) {
-                            houseHere.under = this.underHouse = true
+                            houseHere.under = true
+                            this.setUnderHouseState(true)
                         }
                         else if (houseHere.under) {
-                            houseHere.under = this.underHouse = false
+                            houseHere.under = false
+                            this.setUnderHouseState(false)
                         }
                     }
 
@@ -3110,7 +3118,8 @@ var player = {
                     }
                 }
                 else if (houseHere.under) {
-                    houseHere.under = this.underHouse = false
+                    houseHere.under = false
+                    this.setUnderHouseState(false)
                 }
             }
         }
@@ -3521,6 +3530,8 @@ var chat = {
         handleReceiveMessage(data){
             // console.log(data)
 
+            var underHouse = false
+
             // if message received is from self
             if (data.id == thePlayer.id) {
                 if (zoom.current == 80) {
@@ -3538,6 +3549,7 @@ var chat = {
                         under: thePlayer.underHouse
                     })
                 }
+                underHouse = thePlayer.underHouse
             }
 
             // message from other player
@@ -3552,6 +3564,7 @@ var chat = {
                     y: found.y,
                     under: found.under
                 })
+                underHouse = found.underHouse
             }
 
             // add message to chat window
@@ -3568,7 +3581,8 @@ var chat = {
                 chat.view.addMessage({
                     icons: data.icons,
                     user: data.id,
-                    msg: data.message
+                    msg: data.message,
+                    under: underHouse,
                 })
             }
 
@@ -3595,6 +3609,8 @@ var chat = {
         formRef: null,
         ref: null,
         state: false,
+        recentChats: [],
+        recentChatIndex: 0,
         changeState(bool){
             this.state = bool
 
@@ -3625,6 +3641,13 @@ var chat = {
                 this.cancelMessage()
                 this.ref.blur()
             }
+            else if ( ['ArrowUp', 'ArrowDown'].includes(e.key) ) {
+                this.handleArrow(e.key.substr(5))
+            }
+            
+        },
+        handleArrow(dir){
+            console.log(dir)
         },
         handleSubmit(e){
             e.preventDefault()
@@ -3645,17 +3668,31 @@ var chat = {
     // section to view recent chats
     view: {
         ref: null,
+        titleRef: null,
         init(){
             this.ref = el('.div-chat')
+            this.titleRef = el('.div-chat-title')
+        },
+        setTitleHouseOrNot(){
+            this.titleRef.innerText = 
+                `Local Chat${
+                    thePlayer.underHouse ? 
+                    ' (House)' : ''
+                }`
         },
         createMessageElements(obj){
+            console.log(obj)
             var wrap = div('div-chat-line-wrap'),
                 nameIconWrap = div('div-chat-line-name-icon-wrap', wrap)
 
             if (obj.icons) div('div-chat-line-icon-wrap', nameIconWrap)
 
             var user = div('div-chat-line-user', nameIconWrap)
-            user.innerText = obj.user + ': '
+            user.innerText = (
+                obj.user + 
+                (obj.under ? ' (House)' : '') + 
+                ': '
+            )
 
             var msg = div('div-chat-line-message', wrap)
             msg.innerText = obj.msg
