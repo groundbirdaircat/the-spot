@@ -389,9 +389,6 @@ var item = {
 
         this.tag = infos.tag
 
-        this.beingThrown = false
-        this.dX = this.dY = 0
-
         this.style = infos.style
 
         this.inCollisionRange = false
@@ -587,7 +584,6 @@ var item = {
         this.drawInfo()
     },
     draw(dt){
-        if (this.beingThrown) this.updateThrowPosition(dt)
         if (this.style.type == 'circle') this.drawCircle()
         if (this.inCollisionRange &&
             thePlayer.items.isShowingInfo == this) theMap.drawAfterPlayerArray.push(this)
@@ -664,42 +660,10 @@ var item = {
 
         this.inCollisionRange = false
     },
-    pickItemUp(){ // still need to implement
+    pickItemUp(){
         this.removeFromTile()
         this.putInPlayerItems()
     },
-    throw(){
-        this.beingThrown = true
-        
-        var radians = mouse.centerRadian
-        this.dX = Math.sin(radians)*2
-        this.dY = Math.cos(radians)*2
-    },
-    updateThrowPosition(dt){
-        this.x += this.dX / dt
-        this.y += this.dY / dt
-
-        let tileCheckX = Math.floor(this.x / map.tileSize),
-            tileCheckY = Math.floor(this.y / map.tileSize)
-
-        if (tileCheckX !== this.tileX ||
-            tileCheckY !== this.tileY) {
-                console.log('change tile')
-                this.removeFromTile()
-                this.tileX = tileCheckX
-                this.tileY = tileCheckY
-
-                let newTile = map.tiles[tileCheckX][tileCheckY]
-                if (newTile.isUnderHouseOrLinkedHouse()){
-                    newTile.getHouseOrLinkedHouse().items.push(this)
-                }
-                else newTile.items.push(this)
-            }
-
-        this.dX *= .98
-        this.dY *= .98
-        if (Math.hypot(this.dX, this.dY) <= .5) this.beingThrown = false
-    }
 }
 
 var tree = {
@@ -2748,6 +2712,17 @@ var map = {
     getTile(array){
         return this.tiles[array[0]][array[1]]
     },
+    getTileFromXY(x, y){
+        var tileX = Math.floor(x / map.tileSize),
+            tileY = Math.floor(y / map.tileSize)
+
+        if (
+            !map.tiles[tileX] ||
+            !map.tiles[tileX][tileY]
+        ) return console.log('tried to get tile, but none found')
+
+        return map.tiles[tileX][tileY]
+    },
     getTileHolding(array){
         return this.getTile(array).holding[0]
     },
@@ -3142,11 +3117,7 @@ var player = {
         return [colX, colY]
     },
     getCurrentTile(){
-        return (
-            map.tiles
-                [Math.floor(this.x / map.tileSize)]
-                [Math.floor(this.y / map.tileSize)]
-        )
+        return map.tiles[this.tileX][this.tileY]
     },
     items: {
         holding: [],
@@ -3564,6 +3535,7 @@ var chat = {
                         text: data.message,
                         x: thePlayer.x,
                         y: thePlayer.y,
+                        under: thePlayer.underHouse
                     })
                 }
             }
@@ -3574,19 +3546,31 @@ var chat = {
                     return otherPlyr.id == data.id
                 })
                 if (!found) return console.log('this shouldnt happen')
-                if (found.under && !found.underSameHouseAsThePlayer()) return
                 chat.worldMsg.new({
                     text: data.message,
                     x: found.x,
                     y: found.y,
+                    under: found.under
                 })
             }
 
-            chat.view.addMessage({
-                icons: data.icons,
-                user: data.id,
-                msg: data.message
-            })
+            // add message to chat window
+
+            // if message is from self
+            // if message is from other player
+            //      and player is not under house
+            //      or player is under same house as 'thePlayer'
+            if (
+                data.id == thePlayer.id ||
+                !found.under || 
+                (found.underSameHouseAsThePlayer())
+            ) {
+                chat.view.addMessage({
+                    icons: data.icons,
+                    user: data.id,
+                    msg: data.message
+                })
+            }
 
             if (zoom.current > 5) animate()
         },
@@ -3724,6 +3708,12 @@ var chat = {
             this.x = obj.x
             this.y = obj.y
 
+            if (obj.under) {
+                this.under = 
+                    map.getTileFromXY(this.x, this.y)
+                    .getHouseOrLinkedHouse()
+            }
+
             this.opacity = 1
             this.velX = 2
             this.velY = .5
@@ -3849,6 +3839,14 @@ var chat = {
             return !this.isDestroying
         },
         draw(){
+            if (
+                this.under && (
+                    !thePlayer.underHouse ||
+                    this.under != thePlayer.getCurrentTile().getHouseOrLinkedHouse()
+                )
+            ) return
+
+
             for (var i = 0, length = this.text.length; i < length; i++){
                 c.beginPath()
                 c.shadowColor = 'black'
@@ -4124,7 +4122,6 @@ var allOtherPlayers = {
     },
 }
 
-
 var otherPlayer = {
     r: 1,
     color: '#292',
@@ -4163,13 +4160,16 @@ var otherPlayer = {
         this.tileX = Math.floor(x / map.tileSize)
         this.tileY = Math.floor(y / map.tileSize)
     },
+    getCurrentTile(){
+        return map.tiles[this.tileX][this.tileY]
+    },
     underSameHouseAsThePlayer(){
         return (
                 this.under && 
                 thePlayer.underHouse && 
-                map.tiles[this.tileX][this.tileY]
+                this.getCurrentTile()
                     .getHouseOrLinkedHouse() ==
-                map.tiles[thePlayer.tileX][thePlayer.tileY]
+                thePlayer.getCurrentTile()
                     .getHouseOrLinkedHouse()
             )
     },
