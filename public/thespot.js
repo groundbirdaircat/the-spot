@@ -3564,12 +3564,12 @@ var chat = {
                     y: found.y,
                     under: found.under
                 })
-                underHouse = found.underHouse
+                underHouse = found.under
             }
 
             // add message to chat window
 
-            // if message is from self
+            // if message is from self OR
             // if message is from other player
             //      and player is not under house
             //      or player is under same house as 'thePlayer'
@@ -3610,7 +3610,7 @@ var chat = {
         ref: null,
         state: false,
         recentChats: [],
-        recentChatIndex: 0,
+        recentChatIndex: -1,
         changeState(bool){
             this.state = bool
 
@@ -3642,25 +3642,97 @@ var chat = {
                 this.ref.blur()
             }
             else if ( ['ArrowUp', 'ArrowDown'].includes(e.key) ) {
-                this.handleArrow(e.key.substr(5))
+                this.handleArrow(e.key.substr(5), e)
             }
             
         },
-        handleArrow(dir){
-            console.log(dir)
+        setRecentChatMessage(e){
+            e.preventDefault()
+            if (this.recentChatIndex == -1) {
+                this.ref.value = ''
+            }
+            else {
+                this.ref.value = 
+                    this.recentChats[this.recentChatIndex]
+
+                this.ref.setSelectionRange(
+                    this.ref.value.length,
+                    this.ref.value.length
+                )
+            }
+        },
+        resetRecentChatIndex(){
+            this.recentChatIndex = -1
+        },
+        handleArrow(dir, e){
+            if (!this.recentChats.length) return
+            // chat index is reset
+            // save typed message if it exists
+            // go to previous chat
+            // can't go down if you haven't gone up
+            if (this.recentChatIndex < 0) {
+                if (dir == 'Up') {
+                    if (this.ref.value) {
+                        this.recentChats.push(this.ref.value)
+                        this.recentChatIndex = 
+                            this.recentChats.length - 2
+                    }
+                    else {
+                        this.recentChatIndex = 
+                            this.recentChats.length - 1
+                    }
+                }
+            }
+            // already gone up
+            // can go up or down
+            // as long as there's a message 
+            // in that direction
+
+            // if no message in that direction
+            // UP: stay put
+            else {
+                if (dir == 'Up') {
+                    this.recentChatIndex = 
+                        Math.max(
+                            this.recentChatIndex - 1,
+                            0
+                        )
+                }
+                else if (dir == 'Down') {
+                    this.recentChatIndex++
+                    if (
+                        this.recentChatIndex >
+                        this.recentChats.length - 1
+                    ) {
+                        this.resetRecentChatIndex()
+                    }
+                }
+            }
+            this.setRecentChatMessage(e)
         },
         handleSubmit(e){
             e.preventDefault()
             this.submitMessage(e.target[0].value)
         },
         submitMessage(msg){
+            // clear spaces off ends
+            msg = msg.trim()
+
+            // replace multiple whitespace
+            // characters with a space
+            msg = msg.replace(/\s{1,}/g, ' ')
+
             if (msg) {
                 chat.io.handleSendMessage(msg)
-                // do message here first
+
+                this.recentChats.push(msg)
+                this.resetRecentChatIndex()
+
                 this.clearInput()
             }
         },
         cancelMessage(){
+            this.resetRecentChatIndex()
             this.changeState(false)
         }
     },
