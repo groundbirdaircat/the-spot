@@ -2575,7 +2575,15 @@ var mapTile = {
         // draw what the tile is holding
         if (this.holding.length) {
             for (var i = 0, length = this.holding.length; i < length; i++){
-                this.holding[i].draw()
+                // unless it's holding a house
+                // then draw later
+                // for 'otherPlayer' z order
+                if (this.holding[i].type == 'house') {
+                    map.drawHoldingAfterTilesArray.push(
+                        this.holding[i]
+                    )
+                }
+                else this.holding[i].draw()
             }
         }
 
@@ -2633,6 +2641,7 @@ var map = {
     height: 200,
     tiles: [],
     firstBox: true,
+    drawHoldingAfterTilesArray: [],
     drawItemsAfterTilesArray: [],
     drawAfterPlayerArray: [],
     type: 'map',
@@ -2640,14 +2649,8 @@ var map = {
     init(){
         return this
     },
-    draw(dt){
-        var iW = canvas.width,
-            iH = canvas.height,
-            mapBoundsX = vmaxToPx(this.width * map.tileSize),
-            mapBoundsY = vmaxToPx(this.height * map.tileSize)
-
+    setPlayerOffsetWhenZoomedAllTheWayOut(){
         if (zoom.current == 80 && !thePlayer.zoomedAllTheWayOut){
-
             // when zoomed all the way out,
             // center viewport, and offset player location
 
@@ -2658,7 +2661,6 @@ var map = {
             thePlayer.y = this.height / 2 * map.tileSize
         }
         else if (zoom.current < 80 && thePlayer.zoomedAllTheWayOut){
-
             // reset player location after 
             // being zoomed all the way out
 
@@ -2666,6 +2668,14 @@ var map = {
             thePlayer.x = thePlayer.preZoomedX
             thePlayer.y = thePlayer.preZoomedY
         }
+    },
+    draw(dt){
+        this.setPlayerOffsetWhenZoomedAllTheWayOut()
+
+        var iW = canvas.width,
+            iH = canvas.height,
+            mapBoundsX = vmaxToPx(this.width * map.tileSize),
+            mapBoundsY = vmaxToPx(this.height * map.tileSize)
 
         // offset map to player location
         this.x = iW / 2 - vmaxToPx(thePlayer.x)
@@ -2713,6 +2723,12 @@ var map = {
                 this.tiles[x][y].draw(dt)
             }
         } 
+    },
+    drawHousesAfterTiles(){
+        for (let i = 0, length = this.drawHoldingAfterTilesArray.length; i < length; i++) {
+            this.drawHoldingAfterTilesArray[i].draw()
+        }
+        this.drawHoldingAfterTilesArray = []
     },
     drawItemsAfterTiles(dt){
         for (let i = 0, length = this.drawItemsAfterTilesArray.length; i < length; i++) {
@@ -2917,12 +2933,17 @@ var player = {
     r: 1,
     color: '#292',
     type: 'player',
+    underHouse: false,
     new(spawnPointArray){
         return Object.create(this).init(spawnPointArray)
     },
     init([spawnX, spawnY]){
         this.x = spawnX
         this.y = spawnY
+
+        this.tileX = null
+        this.tileY = null
+        this.setTilePosition()
 
         if (OPTIONS.DEV.DEBUG.SPAWN_IN_CORNER) {
             this.x = 20
@@ -2959,6 +2980,10 @@ var player = {
 
 
     },
+    setTilePosition(){
+        this.tileX = Math.floor(this.x / map.tileSize)
+        this.tileY = Math.floor(this.y / map.tileSize)
+    },
     updatePosition(t){
         if (zoom.current > 2) return
 
@@ -2988,6 +3013,8 @@ var player = {
 
         if (!colX) this.x += dx
         if (!colY) this.y += dy
+
+        this.setTilePosition()
 
     },
     checkCollision(dx, dy){
@@ -3083,10 +3110,10 @@ var player = {
                                 }
                         }
                         if (count) {
-                            houseHere.under = true
+                            houseHere.under = this.underHouse = true
                         }
                         else if (houseHere.under) {
-                            houseHere.under = false
+                            houseHere.under = this.underHouse = false
                         }
                     }
 
@@ -3106,6 +3133,9 @@ var player = {
                             }
                         }
                     }
+                }
+                else if (houseHere.under) {
+                    houseHere.under = this.underHouse = false
                 }
             }
         }
@@ -3540,10 +3570,11 @@ var chat = {
 
             // message from other player
             else {
-                var found = allOtherPlayers.find(otherPlyr => {
+                var found = allOtherPlayers.array.find(otherPlyr => {
                     return otherPlyr.id == data.id
                 })
                 if (!found) return console.log('this shouldnt happen')
+                if (found.under && !found.underSameHouseAsThePlayer()) return
                 chat.worldMsg.new({
                     text: data.message,
                     x: found.x,
@@ -3877,12 +3908,16 @@ const animate = (function animWrap(){
         lastT = dt
     
         theMap.draw(dt)
+
+        allOtherPlayers.drawBeforeHouses()
+
+        map.drawHousesAfterTiles()
+
+        allOtherPlayers.drawAfterHouses()
     
         theMap.drawItemsAfterTiles(dtChange)
     
         thePlayer.draw()
-
-        allOtherPlayers.forEach(plyr => plyr.draw())
     
         theMap.drawAfterPlayer()
 
@@ -3923,7 +3958,8 @@ const websocket = {
             this.sendSocketObj({
                 type: 'move',
                 x: thePlayer.x,
-                y: thePlayer.y
+                y: thePlayer.y,
+                under: thePlayer.underHouse
             })
         }
         setTimeout(this.update.bind(this), 1000/60)
@@ -4051,7 +4087,7 @@ const websocket = {
 
             // for each player sent, create new or update it
             data.players.forEach(plyr => {
-                let foundP = allOtherPlayers.find(otherP => otherP.id == plyr.id)
+                let foundP = allOtherPlayers.array.find(otherP => otherP.id == plyr.id)
 
                 if (!foundP) otherPlayer.new(plyr)
                 else foundP.updateLocation(plyr)
@@ -4060,21 +4096,34 @@ const websocket = {
 
             // remove players that exists
             // but weren't sent via server update
-            allOtherPlayers.forEach(plyr => {
+            allOtherPlayers.array.forEach(plyr => {
                 if (!playerIDs.includes(plyr.id)) plyr.remove()
             })
         }
         // if server update sent no players
         // remove all other players
         else {
-            if (allOtherPlayers.length) {
-                allOtherPlayers.forEach(plyr => plyr.remove())
+            if (allOtherPlayers.array.length) {
+                allOtherPlayers.array.forEach(plyr => plyr.remove())
             }
         }
     },
 }
 
-var allOtherPlayers = []
+var allOtherPlayers = {
+    array: [],
+    drawBeforeHouses(){
+        for (var plyr of this.array) {
+            plyr.drawBeforeHouse()
+        }
+    },
+    drawAfterHouses(){
+        for (var plyr of this.array) {
+            plyr.drawAfterHouse()
+        }
+    },
+}
+
 
 var otherPlayer = {
     r: 1,
@@ -4083,36 +4132,59 @@ var otherPlayer = {
     new(obj){
         return Object.create(this).init(obj)
     },
-    init( { x, y, id } ){
+    init( { x, y, id, under } ){
         this.x = this.drawX = x
         this.y = this.drawY = y
 
+        this.tileX = Math.floor(x / map.tileSize)
+        this.tileY = Math.floor(y / map.tileSize)
+
+        this.under = under
         this.id = id
 
-        allOtherPlayers.push(this)
+        allOtherPlayers.array.push(this)
 
         // console.log('other player created')
 
         return this
     },
     remove(){
-        var index = allOtherPlayers.indexOf(this)
+        var index = allOtherPlayers.array.indexOf(this)
 
         if (index == -1) return console.log('tried to remove other player but none found')
 
-        allOtherPlayers.splice(index, 1)
+        allOtherPlayers.array.splice(index, 1)
     },
-    updateLocation( { x, y } ){
+    updateLocation( { x, y, under } ){
         this.x = x
         this.y = y
-        // console.log('other player location updated')
+        this.under = under
+        
+        this.tileX = Math.floor(x / map.tileSize)
+        this.tileY = Math.floor(y / map.tileSize)
+    },
+    underSameHouseAsThePlayer(){
+        return (
+                this.under && 
+                thePlayer.underHouse && 
+                map.tiles[this.tileX][this.tileY]
+                    .getHouseOrLinkedHouse() ==
+                map.tiles[thePlayer.tileX][thePlayer.tileY]
+                    .getHouseOrLinkedHouse()
+            )
+    },
+    drawBeforeHouse(){
+        if (!this.underSameHouseAsThePlayer()) this.draw()
+        else this.shouldDrawAfterHouse = true
+    },
+    drawAfterHouse(){
+        if (this.shouldDrawAfterHouse) this.draw()
     },
     draw(){
-
+        this.shouldDrawAfterHouse = false
         // smooth out movement animation
         this.drawX = (this.drawX + this.x) * .5
         this.drawY = (this.drawY + this.y) * .5
-
 
         c.beginPath()
         c.arc(
