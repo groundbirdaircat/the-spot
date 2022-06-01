@@ -143,7 +143,7 @@ const zoom = (function zoomWrap(){
         currentZoomLevel += e.deltaY > 0 ? 1 : -1
         currentZoomLevel = Math.max(Math.min(currentZoomLevel, zoomLevels.length -1), 0)
         currentZoom = zoomLevels[currentZoomLevel]
-        if (lastZoom > 2) requestAnimationFrame(animate)
+        if (lastZoom > 2) animate()
     }
     return { get current(){ return currentZoom } }
 })()
@@ -289,6 +289,8 @@ function setCanvasSize(){
     let dpi = window.devicePixelRatio
     canvas.width = window.innerWidth * dpi
     canvas.height = window.innerHeight * dpi
+
+    if (zoom.current > 5) animate()
 }
 
 function rand(min, max){
@@ -584,6 +586,8 @@ var item = {
         this.drawInfo()
     },
     draw(dt){
+        if (zoom.current > 5) return
+
         if (this.style.type == 'circle') this.drawCircle()
         if (this.inCollisionRange &&
             thePlayer.items.isShowingInfo == this) theMap.drawAfterPlayerArray.push(this)
@@ -2740,7 +2744,7 @@ var map = {
 
         // START NEW PLAYER
         thePlayer = player.new(data.spawnPoint)
-        requestAnimationFrame(animate)
+        animate()
     },
     createAllTiles(){
         map.tiles = []
@@ -2906,7 +2910,8 @@ var map = {
 
 var player = {
     r: 1,
-    color: '#292',
+    name: 'Steve',
+    color: randFloor(360),
     type: 'player',
     underHouse: false,
     new(spawnPointArray){
@@ -2950,7 +2955,7 @@ var player = {
                 false
             )
         }
-        c.fillStyle = this.color
+        c.fillStyle = `hsl(${this.color}, 100%, 50%)`
         c.fill()
 
 
@@ -3580,7 +3585,7 @@ var chat = {
             ) {
                 chat.view.addMessage({
                     icons: data.icons,
-                    user: data.id,
+                    name: data.name,
                     msg: data.message,
                     under: underHouse,
                 })
@@ -3757,11 +3762,19 @@ var chat = {
             var wrap = div('div-chat-line-wrap'),
                 nameIconWrap = div('div-chat-line-name-icon-wrap', wrap)
 
-            if (obj.icons) div('div-chat-line-icon-wrap', nameIconWrap)
+            if (obj.icons) {
+                obj.icons.forEach(icon => {
+                    var iconDiv = div('div-chat-line-icon-wrap', nameIconWrap)
+                    if (icon.color) {
+                        iconDiv.style.backgroundColor = 
+                            `hsl(${icon.color}, 100%, 50%)`
+                    }
+                })
+            }
 
             var user = div('div-chat-line-user', nameIconWrap)
             user.innerText = (
-                obj.user + 
+                obj.name + 
                 (obj.under ? ' (House)' : '') + 
                 ': '
             )
@@ -4182,7 +4195,9 @@ const websocket = {
         this.sendSocketObj({
             type: 'init',
             id: this.id,
-            mID: map.mapID
+            mID: map.mapID,
+            color: player.color,
+            name: player.name
         })
     },
     handleServerUpdate(data){
@@ -4233,12 +4248,11 @@ var allOtherPlayers = {
 
 var otherPlayer = {
     r: 1,
-    color: '#292',
     type: 'player',
     new(obj){
         return Object.create(this).init(obj)
     },
-    init( { x, y, id, under } ){
+    init( { x, y, id, under, color } ){
         this.x = this.drawX = x
         this.y = this.drawY = y
 
@@ -4247,6 +4261,7 @@ var otherPlayer = {
 
         this.under = under
         this.id = id
+        this.color = color
 
         allOtherPlayers.array.push(this)
 
@@ -4290,6 +4305,8 @@ var otherPlayer = {
         if (this.shouldDrawAfterHouse) this.draw()
     },
     draw(){
+        if (zoom.current > 5) return
+
         this.shouldDrawAfterHouse = false
         // smooth out movement animation
         this.drawX = (this.drawX + this.x) * .5
@@ -4304,7 +4321,7 @@ var otherPlayer = {
             Math.PI * 2, 
             false
         )
-        c.fillStyle = this.color
+        c.fillStyle = `hsl(${this.color}, 100%, 50%)`
         c.fill()
     },
 };
