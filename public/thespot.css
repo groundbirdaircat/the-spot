@@ -90,7 +90,7 @@ body {
     /* border: 1px white solid; */
     align-items: center;
     display: flex;
-    height: 2vmin
+    height: 100%;
 }
 .div-chat-line-icon-wrap{
     /* border: 1px red solid; */

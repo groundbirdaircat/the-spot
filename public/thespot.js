@@ -3758,7 +3758,6 @@ var chat = {
                 }`
         },
         createMessageElements(obj){
-            console.log(obj)
             var wrap = div('div-chat-line-wrap'),
                 nameIconWrap = div('div-chat-line-name-icon-wrap', wrap)
 
@@ -3825,6 +3824,7 @@ var chat = {
         visLength: 5000,
         minVelX: .25,
         maxVelY: 2,
+        lineLength: 150,
         init(obj){
             this.text = this.formatText(obj.text)
             this.x = obj.x
@@ -3852,46 +3852,73 @@ var chat = {
         },
         new(obj){ return Object.create(this).init(obj) },
         formatText(text){
-            var split = text.trim().split(' '),
-                lineLength = 150, // pixels
-                wordLength = 30 // characters
-                
-            // split words longer than 'wordLength'
-            // into seperate lines
+            var split = text.trim().split(' ')
 
-            for (var i = 0; i < split.length; i++) {
-                if (split[i].length > wordLength) {
-                    let start = split[i].substr(0, wordLength),
-                        end = split[i].substr(wordLength)
-                    
-                    split[i] = start
-                    split.splice(i + 1, 0, end)
+            this.splitLongWords(split)
+            
+            return this.splitIntoLines(split)
+        },
+        splitLongWords(array){
+            // for each word in the split array
+            // check the words length
+            for (var i = 0; i < array.length; i++) {
+                if (
+                    this.measureText(array[i]) >
+                    this.lineLength
+                ) {
+                    // if a word is longer than max length, 
+                    // find the breaking point and split it
+
+                    // that index gets sliced,
+                    // and the rest gets spliced
+                    // into the next index
+                    for (var j = 1; j < array[i].length; j++) {
+                        if (
+                            this.measureText(
+                                array[i].slice(0, j)
+                            ) > this.lineLength
+                        ) {
+                            array.splice(i + 1, 0, array[i].slice(j))
+                            array[i] = array[i].slice(0, j)
+                            break
+                        }
+                    }
                 }
             }
+
+            return array
+        },
+        splitIntoLines(array){
+            // first 'word' doesn't need to be checked
+            // because 'splitLongWords' would have sliced it
             
-            var newArray = [split[0]]
+            var newArray = [array[0]]
 
-            // split words into lines 
-            // not longer than line length ( measures pixels )
+            // combine words into lines 
+            // not longer than line length
 
-            for (var i = 1, length = split.length; i < length; i++) {
+            for (var i = 1, length = array.length; i < length; i++) {
                 if ( 
                     this.measureText(
                         newArray[newArray.length - 1] +
-                        ' ' + split[i]
-                    ) > lineLength
+                        ' ' + array[i]
+                    ) > this.lineLength
                 ) {
-                    newArray.push(split[i])
+                    // if the line + word is too long,
+                    // push word to next index 
+                    // which becomes a new line
+                    newArray.push(array[i])
                 }
                 else {
-                    newArray[newArray.length - 1] += ' ' + split[i]
+                    // if the line + word is still under the limit
+                    // concat that word to the line
+                    newArray[newArray.length - 1] += ' ' + array[i]
                 }
             }
 
             return newArray
         },
         measureText(text){
-            // used by 'formatText'
             c.save()
 
             c.font = 10 + 'px Arial'
@@ -3956,6 +3983,7 @@ var chat = {
                 }
                 else this.opacity = opacityFromTime
             }
+
             // true means update happened
             // false means it was destroyed
             return !this.isDestroying
