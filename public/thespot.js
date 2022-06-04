@@ -673,7 +673,7 @@ var item = {
     drawAfterPlayer(){
         this.drawInfo()
     },
-    draw(dt){
+    draw(){
         if (zoom.current > 5) return
 
         if (this.style.type == 'circle') this.drawCircle()
@@ -973,7 +973,7 @@ var house = {
             // push it to draw after tiles
             for (let i = 0, length = this.items.length; i < length; i++) {
                 if (this.currentItemZone == this.items[i].tag || !this.items[i].tag)
-                    theMap.drawItemsAfterTilesArray.push(this.items[i])
+                    theMap.drawItemsAfterHousesArray.push(this.items[i])
             }
         }
         // WALLS / BOXES
@@ -2665,6 +2665,7 @@ var map = {
     tiles: [],
     firstBox: true,
     drawHoldingAfterTilesArray: [],
+    drawItemsAfterHousesArray: [],
     drawItemsAfterTilesArray: [],
     drawAfterPlayerArray: [],
     type: 'map',
@@ -2752,6 +2753,12 @@ var map = {
             this.drawHoldingAfterTilesArray[i].draw()
         }
         this.drawHoldingAfterTilesArray = []
+    },
+    drawItemsAfterHouses(dt){
+        for (let i = 0, length = this.drawItemsAfterHousesArray.length; i < length; i++) {
+            this.drawItemsAfterHousesArray[i].draw(dt)
+        }
+        this.drawItemsAfterHousesArray = []
     },
     drawItemsAfterTiles(dt){
         for (let i = 0, length = this.drawItemsAfterTilesArray.length; i < length; i++) {
@@ -4099,21 +4106,23 @@ const animate = (function animWrap(){
     
         lastT = dt
     
-        theMap.draw(dt)
+        theMap.draw(dt) // draw all tiles
 
-        allOtherPlayers.drawBeforeHouses()
+        theMap.drawItemsAfterTiles() // draw tile items after tiles before players
 
-        map.drawHousesAfterTiles()
+        allOtherPlayers.drawBeforeHouses() // other player is not in same house as player, draw other player
 
-        allOtherPlayers.drawAfterHouses()
+        map.drawHousesAfterTiles() // all houses are drawn
     
-        theMap.drawItemsAfterTiles(dtChange)
-    
-        thePlayer.draw()
-    
-        theMap.drawAfterPlayer()
+        theMap.drawItemsAfterHouses() // all items are drawn
 
-        chat.drawWorldMessages(dt)
+        allOtherPlayers.drawAfterHouses() // player and other player in same house, draw other player
+    
+        thePlayer.draw() // draw local client
+    
+        theMap.drawAfterPlayer() // draw trees, item infos
+
+        chat.drawWorldMessages(dt) // draw world chat messages
 
         if (thePlayer.inventory.openState) thePlayer.inventory.draw()
     
