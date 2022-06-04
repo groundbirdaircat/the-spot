@@ -27,7 +27,7 @@ app.listen(
 
 const path = require('path');
 
-['debug', 'log', 'warn', 'error'].forEach((methodName) => {
+['debug', 'log', 'warn', 'error', 'info'].forEach((methodName) => {
 
     const originalLoggingMethod = console[methodName];
 

@@ -117,7 +117,7 @@ const dbg = (function debugWrap(){
         }
         if (logObj.tile?.linkedFrom) logObj._linkedFrom = map.tiles[logObj.tile.linkedFrom[0]][logObj.tile.linkedFrom[1]]
         if (logObj.tile?.linkedTo) logObj._linkedTo = logObj.tile.linkedTo.map(xyAry => map.tiles[xyAry[0]][xyAry[1]])
-        console.log(logObj)
+        console.info(logObj)
 
     }
     return {
@@ -180,7 +180,7 @@ const keys = (function keyWrap(){
         if (zoom.current > 2) return
 
         var key = e.key.toLowerCase()
-        // console.log(key)
+        // console.info(key)
     
         if (!keyStates[key] && boundKeys.includes(key)) 
             keyStates[key] = true
@@ -374,6 +374,8 @@ function init(){
 
 }
 
+var allWorldItems = []
+
 var item = {
     type: 'item',
     extraCollisionDistance: .5,
@@ -382,20 +384,106 @@ var item = {
         fontSize: 1.5
     },
     init(infos){
-        this.itemType = infos.itemType
+        this.itemType = infos.type
+
+        this.id = infos.id
+
+        this.style = this.getStyle(infos.type)
+
+        if (infos.spawnInInventory) {
+            return this.putInPlayerItems()
+        }
 
         this.x = infos.x
         this.y = infos.y
-        this.tileX = infos.tileX
-        this.tileY = infos.tileY
+        this.tileX = Math.floor(infos.x / map.tileSize)
+        this.tileY = Math.floor(infos.y / map.tileSize)
 
         this.tag = infos.tag
 
-        this.style = infos.style
+        this.requestingPickUp = false
 
         this.inCollisionRange = false
 
+        this.addToTile(infos.house)
+
+        allWorldItems.push(this)
+
+        this.checkCollision()
+
         return this
+    },
+    addToTile(inHouse){
+        var tile = 
+            map.getTile([
+                this.tileX,
+                this.tileY,
+            ])
+
+        if (inHouse) {
+            tile.getHouseOrLinkedHouse()
+            .items.push(this)
+        }
+        else tile.items.push(this)
+    },
+    removeFromTile(){
+        var tile = 
+            map.getTile([
+                this.tileX,
+                this.tileY,
+            ])
+
+        var index = tile.items.indexOf(this)
+
+        if (index != -1) {
+            tile.items.splice(index, 1)
+        }
+        else {
+            index = 
+                tile.getHouseOrLinkedHouse()
+                .items.indexOf(this)
+            
+            if (index != -1) {
+                tile.getHouseOrLinkedHouse()
+                .items.splice(index, 1)
+            }
+            else console.info(
+                'tried to remove item but didnt find it'
+            )
+        }
+    },
+    removeFromAllWorldItems(){
+        var index = allWorldItems.indexOf(this)
+
+        if (index == -1) return console.info('tried to remove but didnt find')
+
+        allWorldItems.splice(index, 1)
+    },
+    destroyItem(){
+        this.removeFromAllWorldItems()
+        this.removeFromTile()
+
+        if (
+            thePlayer.items
+            .canShowInfo.includes(this)
+        ) {
+            thePlayer.items
+            .removeFromCanShow(this)
+        }
+    },
+    getStyle(itemType){
+        var obj
+
+        switch(itemType) {
+            case 'water':
+                obj = {
+                    type: 'circle',
+                    r: .25
+                }
+                break
+        }
+
+        return obj
     },
     drawCircle(){
         c.beginPath()
@@ -599,6 +687,7 @@ var item = {
         if (this.style.type == 'circle') this.checkCircleCollision()
     },
     checkCircleCollision(){
+        if (this.requestItemPickUp) return
 
         let {x: pX, y: pY, r: pR} = thePlayer
 
@@ -618,41 +707,6 @@ var item = {
             thePlayer.items.removeFromCanShow(this)
         }
     },
-    removeFromTile(){
-        var tile = map.tiles[this.tileX][this.tileY]
-
-        // handle item existing in tile items
-        let index = tile.items.indexOf(this)
-        if (index >= 0) {
-            tile.items.splice(
-                index
-                , 1
-            )
-        }
-        // handle tile existing in tile's holding items
-        else if (tile.holding[0]) {
-            index = tile.holding[0].items.indexOf(this)
-            if (index >= 0) {
-                tile.holding[0].items.splice(
-                    index
-                    , 1
-                )
-            }
-            else console.log('tried to remove item from tile but found no index for it')
-        }
-        // handle tile existing in linked tile's holding items
-        else if (tile.linkedFrom) {
-            tile = map.tiles[tile.linkedFrom[0]][tile.linkedFrom[1]]
-            index = tile.holding[0].items.indexOf(this)
-            if (index >= 0) {
-                tile.holding[0].items.splice(
-                    index
-                    , 1
-                )
-            }
-            else console.log('LINKED tried to remove item from tile but found no index for it')
-        }
-    },
     putInPlayerItems(){
         this.x = 
         this.y = 
@@ -666,6 +720,7 @@ var item = {
     },
     pickItemUp(){
         this.removeFromTile()
+        this.removeFromAllWorldItems()
         this.putInPlayerItems()
     },
 }
@@ -2723,7 +2778,7 @@ var map = {
         if (
             !map.tiles[tileX] ||
             !map.tiles[tileX][tileY]
-        ) return console.log('tried to get tile, but none found')
+        ) return console.info('tried to get tile, but none found')
 
         return map.tiles[tileX][tileY]
     },
@@ -2733,7 +2788,7 @@ var map = {
 
     // GENERATION FROM SERVER MAP
     createMapFromWS(data){
-        console.log('create', data)
+        console.info('create', data)
 
         map.mapID = data.map.id
 
@@ -3139,7 +3194,6 @@ var player = {
         isShowingInfo: null,
         showingIndex: -1,
         addToCanShow(item){
-            // console.log('ADD: ', item.itemType)
             this.canShowInfo.push(item)
             if (!this.isShowingInfo) {
                 this.isShowingInfo = item
@@ -3152,20 +3206,17 @@ var player = {
         removeFromCanShow(item){
             var index = this.canShowInfo.indexOf(item)
 
-            if (index == -1) return console.log('item not found', item)
+            if (index == -1) return console.info('item not found', item)
 
             if (this.showingIndex > 0) this.showingIndex-- 
 
             this.canShowInfo.splice(index, 1)
-            // console.log('REMOVE: ', item.itemType)
 
             if (!this.canShowInfo.length) {
-                // console.log('minus one')
                 this.showingIndex = -1
                 this.isShowingInfo = null
             }
             else {
-                // console.log('Changing ShowingInfo - INDEX: ', this.showingIndex, this.canShowInfo)
                 this.setCurrentShowing()
             }
         },
@@ -3185,42 +3236,37 @@ var player = {
         },
         dropItem(item){
             if (!this.holding.length) return
-            var tile = thePlayer.getCurrentTile(),
-                index = this.holding.findIndex(x => x == item)
 
-            // remove from player holding
+            // remove from inventory
+            var index = this.holding.findIndex(x => x == item)
             this.holding.splice(index, 1)
-
-            if (index < 0) return console.log('item not found for drop')
-    
-            // set item location
-            item.x = thePlayer.x
-            item.y = thePlayer.y
-    
-            item.tileX = tile.tileX
-            item.tileY = tile.tileY
-            
-            // add to house items if player in house
-            if (tile.isUnderHouseOrLinkedHouse()) {
-                let house = tile.getHouseOrLinkedHouse()
-                item.tag = house.currentItemZone
-                    house.items.push(item)
-            }
-            // or add to current tile items
-            else tile.items.push(item)
-
-            // turn on item information immediately
-            item.checkCollision()
 
             // update inventory
             thePlayer.inventory.updateList()
+
+            // tell server about it
+            websocket.requestItemDrop(item)
+
+            // server will send back item
+            // in regular item update
+            // which adds it to the world
+            return
         },
     },
     handleKeyF(){
-        if (this.items.isShowingInfo) {
-            this.items.isShowingInfo.pickItemUp()
-            this.items.removeFromCanShow(this.items.isShowingInfo)
-        }
+        if (!this.items.isShowingInfo) return
+
+        var tempItem = this.items.isShowingInfo
+
+        tempItem.requestItemPickUp = true
+
+        this.items.removeFromCanShow(
+            tempItem
+        )
+
+        websocket.requestItemPickUp(
+            tempItem.id
+        )
     },
     inventory: {
         x: 6,
@@ -3533,8 +3579,6 @@ var chat = {
 
     io: {
         handleReceiveMessage(data){
-            // console.log(data)
-
             var underHouse = false
 
             // if message received is from self
@@ -3562,7 +3606,7 @@ var chat = {
                 var found = allOtherPlayers.array.find(otherPlyr => {
                     return otherPlyr.id == data.id
                 })
-                if (!found) return console.log('this shouldnt happen')
+                if (!found) return console.info('this shouldnt happen')
                 chat.worldMsg.new({
                     text: data.message,
                     x: found.x,
@@ -4167,7 +4211,11 @@ const websocket = {
                 break
 
             case 'test':
-                console.log(data.message)
+                console.info(data.message)
+                break
+
+            case 'item':
+                this.handleItemPickUpResponse(data)
                 break
         }
     },
@@ -4176,13 +4224,13 @@ const websocket = {
 
         this.rejoin.reset()
 
-        console.log('WebSocket reconnected: ', String(new Date()).slice(0, -33))
+        console.info('WebSocket reconnected: ', String(new Date()).slice(0, -33))
     },
     handleSocketClose(){
         if (!this.rejoin.state) {
             this.rejoin.state = true
 
-            console.log('WebSocket disconnected: ', String(new Date()).slice(0, -33))
+            console.info('WebSocket disconnected: ', String(new Date()).slice(0, -33))
         }
 
         this.rejoin.timeout = 
@@ -4229,20 +4277,25 @@ const websocket = {
         })
     },
     handleServerUpdate(data){
-
-        if (data.players?.length) {
-
-            // make array of all playerIDs sent from server update
-            var playerIDs = data.players.map(plyr => plyr.id)
+        if (data.playerUpdate) this.handlePlayerUpdate(data)
+        if (data.itemUpdate) this.handleItemUpdate(data)
+    },
+    handlePlayerUpdate( { players } ){
+        if (players?.length) {
 
             // for each player sent, create new or update it
-            data.players.forEach(plyr => {
-                let foundP = allOtherPlayers.array.find(otherP => otherP.id == plyr.id)
+            players.forEach(plyr => {
+                let foundP = 
+                    allOtherPlayers.array
+                    .find(otherP => otherP.id == plyr.id)
 
                 if (!foundP) otherPlayer.new(plyr)
                 else foundP.updateLocation(plyr)
 
             })
+
+            // make array of all playerIDs sent from server update
+            var playerIDs = players.map(plyr => plyr.id)
 
             // remove players that exists
             // but weren't sent via server update
@@ -4254,9 +4307,65 @@ const websocket = {
         // remove all other players
         else {
             if (allOtherPlayers.array.length) {
-                allOtherPlayers.array.forEach(plyr => plyr.remove())
+                allOtherPlayers.array
+                .forEach(plyr => plyr.remove())
             }
         }
+    },
+    handleItemUpdate( { items } ){
+        // get all existing item ids
+        var allItemIDs = allWorldItems.map(item => item.id)
+
+        // for each item sent
+        // update it?
+        // or create it
+        items.forEach(currentItem => {
+            if (allItemIDs.includes(currentItem.id)) return // update position? or check?
+            else item.new(currentItem)
+        })
+
+        // get all update item ids
+        var allUpdateIDs = items.map(item => item.id)
+
+        // remove existing world items not in update
+        for (var i = allWorldItems.length - 1; i >= 0; i--) {
+            if (!allUpdateIDs.includes(allWorldItems[i].id)) {
+                allWorldItems[i].destroyItem()
+            }
+        }
+    },
+    requestItemPickUp(itemID){
+        this.sendSocketObj({
+            type: 'item',
+            action: 'pickup',
+            id: itemID,
+        })
+    },
+    handleItemPickUpResponse( { itemType, id } ){
+        item.new({
+            spawnInInventory: true,
+            type: itemType,
+            id
+        })
+    },
+    requestItemDrop( { id }){
+        var tempObj = {
+            type: 'item',
+            action: 'drop',
+            id,
+            x: thePlayer.x,
+            y: thePlayer.y,
+        }
+
+        if (thePlayer.underHouse) {
+            tempObj.under = true
+            tempObj.tag = 
+                thePlayer.getCurrentTile()
+                    .getHouseOrLinkedHouse()
+                    .currentItemZone
+        }
+
+        this.sendSocketObj(tempObj)
     },
 }
 
@@ -4293,14 +4402,12 @@ var otherPlayer = {
 
         allOtherPlayers.array.push(this)
 
-        // console.log('other player created')
-
         return this
     },
     remove(){
         var index = allOtherPlayers.array.indexOf(this)
 
-        if (index == -1) return console.log('tried to remove other player but none found')
+        if (index == -1) return console.info('tried to remove other player but none found')
 
         allOtherPlayers.array.splice(index, 1)
     },
