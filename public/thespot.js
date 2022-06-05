@@ -2803,10 +2803,6 @@ var map = {
         this.addHousesToTiles(data.map.h)
         this.addRoadsToTiles(data.map.r)
         this.addTreesToTiles(data.map.t)
-
-        // START NEW PLAYER
-        thePlayer = player.new(data.spawnPoint)
-        animate()
     },
     createAllTiles(){
         map.tiles = []
@@ -2967,6 +2963,26 @@ var map = {
 
         map.tiles[x][y].linkedTo = linkedTiles
 
+    },
+}
+
+var game = {
+    startNew(data){
+        map.createMapFromWS(data)
+
+        // START NEW PLAYER
+        thePlayer = player.new(data.spawnPoint)
+
+        player.items.holding = []
+        player.inventory.updateList()
+
+        thePlayer.id = data.playerID
+
+        allWorldItems = []
+
+        websocket.update()
+
+        animate()
     },
 }
 
@@ -4145,7 +4161,9 @@ const websocket = {
         this.lastX = 0
         this.lastY = 0
     },
+    updateTimeout: 0,
     update(){
+        clearTimeout(this.updateTimeout)
         if (
             this.ws.readyState == 1 &&
             zoom.current < 5 && (
@@ -4163,7 +4181,8 @@ const websocket = {
                 under: thePlayer.underHouse
             })
         }
-        setTimeout(this.update.bind(this), 1000/60)
+        this.updateTimeout = 
+            setTimeout(this.update.bind(this), 1000/60)
     },
     createWebSocket(){
         this.ws = 
@@ -4210,9 +4229,7 @@ const websocket = {
                 break
 
             case 'map':
-                map.createMapFromWS(data)
-                thePlayer.id = data.playerID
-                this.update()
+                game.startNew(data)
                 break
 
             case 'update':
@@ -4259,6 +4276,7 @@ const websocket = {
             this.state = false
         },
     },
+
     handleSocketInit(data){
         // server didn't find your id
         // so you're this id now
@@ -4285,6 +4303,7 @@ const websocket = {
             name: player.name
         })
     },
+
     handleServerUpdate(data){
         if (data.playerUpdate) this.handlePlayerUpdate(data)
         if (data.itemUpdate) this.handleItemUpdate(data)
@@ -4343,6 +4362,7 @@ const websocket = {
             }
         }
     },
+
     requestItemPickUp(itemID){
         this.sendSocketObj({
             type: 'item',
