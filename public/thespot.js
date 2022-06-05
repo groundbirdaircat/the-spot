@@ -2973,8 +2973,7 @@ var game = {
         // START NEW PLAYER
         thePlayer = player.new(data.spawnPoint)
 
-        player.items.holding = []
-        player.inventory.updateList()
+        player.items.reset()
 
         thePlayer.id = data.playerID
 
@@ -3274,6 +3273,14 @@ var player = {
             // in regular item update
             // which adds it to the world
             return
+        },
+        reset(){
+            this.holding = []
+            this.canShowInfo = []
+            this.showingIndex = -1
+            this.isShowingInfo = null
+
+            player.inventory.updateList()
         },
     },
     handleKeyF(){
@@ -4103,9 +4110,26 @@ const animate = (function animWrap(){
         requestAnimationFrame(doAnimate)
     }
     var lastT = 0,
-        animState = false
+        animState = false,
+
+        animTime,
+        animCount = 0,
+        animDebug = false
+
     function doAnimate(dt){
         if (!dt) return requestAnimationFrame(doAnimate)
+
+        if (animDebug) {
+            if (!animCount) animTime = performance.now()
+            animCount++
+            if (animCount > 60) {
+                console.log(
+                    '60 animation frames took',
+                    performance.now() - animTime
+                )
+                animCount = 0
+            }
+        }
     
         c.clearRect(0, 0, canvas.width, canvas.height) 
     
@@ -4161,8 +4185,25 @@ const websocket = {
         this.lastX = 0
         this.lastY = 0
     },
+
+    updateCount: 0,
+    updateCountTimer: 0,
+    debugUpdateCount: false,
+
     updateTimeout: 0,
     update(){
+        if (this.debugUpdateCount) {
+            if (!this.updateCount) {
+                this.updateCountTimer = performance.now()
+            }
+            this.updateCount++
+            if (this.updateCount > 60) {
+                this.updateCount = 0
+                console.log('60 updates took', performance.now() - this.updateCountTimer)
+            }
+        }
+
+
         clearTimeout(this.updateTimeout)
         if (
             this.ws.readyState == 1 &&
