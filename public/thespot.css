@@ -152,3 +152,133 @@ body {
     z-index: -1;
     left: 0;
 }
+
+
+/* START WRAP */
+
+.start-wrap {
+    z-index: 1;
+    width: 100%;
+    height: 100vh;
+    background-color: #222;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    overflow-y: auto;
+
+    font-family: Arial, Helvetica, sans-serif;
+
+    background-image: url(./img/homebg.jpg);
+    background-size: cover;
+    background-position: center;
+}
+.start-title {
+    font-size: 4rem;
+    margin: 4rem;
+}
+.start-description {
+    max-width: 600px;
+    padding: 1rem;
+}
+.start-actions-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 4rem;
+}
+.start-actions {
+    display: flex;
+    width: 100vw;
+    max-width: 500px;
+}
+.start-color {
+    width: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.start-color-circle {
+    background-color: hsl(120, 100%, 50%);
+    border-radius: 50%;
+    height: 50px;
+    width: 50px;
+    margin-bottom: 1rem;
+}
+.start-name {
+    width: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+.start-name-button {
+    min-width: 100px;
+    height: 50px;
+    border-radius: 25px;
+    margin-top: 1rem;
+    padding: 1rem;
+}
+.start-button {
+    min-width: 100px;
+    height: 50px;
+    border-radius: 25px;
+    margin-top: 2rem;
+    padding: 1rem;
+}
+.start-signature {
+    font-size: .75rem;
+}
+
+
+/*  HELP SECTION  */
+
+.help-button {
+    position: absolute;
+    left: 0;
+    background-color: rgba(0, 0, 0, .5);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 25px;
+    cursor: pointer;
+}
+
+.help-window {
+    position: absolute;
+    border: 1px white solid;
+    width: 100vw;
+    max-width: 500px;
+    background-color: #222;
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    font-family: Arial, Helvetica, sans-serif;
+    line-height: 2rem;
+}
+.help-wrap {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.help-close {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    background-color: #444;
+    width: 25px;
+    height: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 1px white solid;
+    cursor: pointer;
+}

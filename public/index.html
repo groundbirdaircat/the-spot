@@ -3,13 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Canvas Test 2</title>
+    <title>The Spot</title>
 
     <script src="./thespot.js"></script>
     <link href="./thespot.css" rel="stylesheet">
 </head>
 <body>
+    <div class="start-wrap">
+        <div class="start-title">The Spot</div>
+        <div class="start-description">
+            The Spot is a proof of concept used to test various capabilities in web development.
+            <br><br>
+            The main focus of this project was to test the Canvas API with procedural map generation, 
+            selective rendering, multiplayer websocket connections, and dynamic items.
+            <br><br>
+            This is not a fully polished game, and there is no progress, goal, or end point.
+            <br><br>
+            Then what is it? The Spot is an explorable chat environment with a procedurally generated map 
+            that contains thousands of searchable houses, in which you can find one type of (useless) item: water.
+            <br><br>
+            Pick a color and a name, and then press start to check it out.
+        </div>
+        <div class="start-actions-wrap">
+            <div class="start-actions">
+                <div class="start-color">
+                    <div class="start-color-circle"></div>
+                    <input class="start-color-input" type="range" min="0" max="360" step="1">
+                </div>
+                <div class="start-name">
+                    <div class="start-name-current">Slappin Shoebox</div>
+                    <button class="start-name-button">Pick new name</button>
+                </div>
+            </div>
+            <button class="start-button">Start</button>
+        </div>
+        <br><br><span class="start-signature">Sam Welsh 2022</span>
+    </div>
+
     <div class="container">
+        <div class="help-button">?</div>
+        <div class="help-wrap">
+            <div class="help-window">
+                <div class="help-close">&times;</div>
+                <h1>Controls:</h1>
+                <br>
+                WASD - Movement<br>
+                Shift - Move faster<br>
+                Mouse Wheel - Zoom in / out<br>
+                Tab - Inventory<br>
+                Enter - Open chat window / Send chat message<br>
+            </div>
+        </div>
+
         <canvas class="canvas"></canvas>
 
         <div class="div-chat-wrap">

@@ -51,6 +51,98 @@ const OPTIONS = {
     }
 }
 
+function startWrap(){
+    var startWrap = el('.start-wrap')
+
+    // handle color input
+
+    var colorInput = el('.start-color-input'),
+        colorCircle = el('.start-color-circle')
+
+    colorInput.oninput = e => {
+        colorCircle.style.backgroundColor = 
+            `hsl(${ e.target.value }, 100%, 50%)`
+    }
+
+    // set default color
+
+    var startColor = randFloor( 361 )
+    colorInput.value = startColor
+
+    colorCircle.style.backgroundColor = 
+        `hsl(${ startColor }, 100%, 50%)`
+
+    // handle name click
+
+    var currentName = el('.start-name-current'),
+        nameButton = el('.start-name-button'),
+        actualName
+
+    var names1 = [
+            'Saucey', 'Tanked', 'Flat', 'Giant',
+            'Slappin', 'Scary', 'Tall', 'Small',
+            'Fancy', 'Lucky', 'Pioneer', 'Spotty',
+            'Metal', 'Plastic', 'Shiney', 'Ranger',
+            'Mean', 'Nice', 'Wrapped', 'Clear',
+        ],
+        names2 = [
+            'Dog', 'Robot', 'Cat', 'Mouse',
+            'Clone', 'Android', 'Alien', 'Human',
+            'Dot', 'Patch', 'Point', 'Cord',
+            'Space', 'Sun', 'Planet', 'Moon',
+            'Ship', 'Boat', 'Station', 'Port'
+        ]
+
+    function selectName() {
+        var index1 = randFloor( names1.length )
+        var index2 = randFloor( names2.length )
+        return names1[ index1 ] + ' ' + names2[ index2 ]
+    }
+
+    nameButton.onclick = () => {
+        var newName = selectName()
+        currentName.innerText = newName
+        actualName = newName
+    }
+
+    // set default name 
+
+    nameButton.onclick()
+
+    // start button
+
+    var startButton = el('.start-button')
+
+    startButton.onclick = () => {
+        player.name = actualName
+        player.color = colorInput.value
+
+        startWrap.remove()
+        websocket.init()
+        helpWindow()
+    }
+}
+
+function helpWindow() {
+    var helpState = true
+
+    var closeButton = el('.help-close'),
+        helpWrap = el('.help-wrap')
+
+    closeButton.onclick = () => {
+        helpWrap.remove()
+        helpState = false
+    }
+
+    var container = el('.container'),
+        helpButton = el('.help-button')
+
+    helpButton.onclick = () => {
+        container.append( helpWrap )
+        helpState = true
+    }
+}
+
 const dbg = (function debugWrap(){
     function getTileFromClick(e){
         return [
@@ -172,6 +264,8 @@ const keys = (function keyWrap(){
     }
 
     function handleKeyDown(e){
+        if (!game.state) return
+
         if (chat.typing.state) 
             return chat.typing.handleKeys(e)
         else if (e.key == 'Enter')
@@ -329,7 +423,8 @@ function init(){
 
     chat.init()
 
-    websocket.init()
+    startWrap()
+    // websocket.init()
 
     theMap = map.new()
     // theMap.generate()
@@ -691,9 +786,9 @@ var item = {
 
         let {x: pX, y: pY, r: pR} = thePlayer
 
-        difX = this.x - pX
-        difY = this.y - pY
-        difR = this.style.r + pR
+        var difX = this.x - pX
+        var difY = this.y - pY
+        var difR = this.style.r + pR
 
         if (difR + this.extraCollisionDistance > Math.hypot(difX, difY)) {
             // collision detected
@@ -2380,10 +2475,11 @@ var road = {
     draw(){
         c.beginPath()
         if (this.corner) {
-            let xAdjust =
-                yAdjust =
-                startAngle =
+            let xAdjust = 0,
+                yAdjust = 0,
+                startAngle = 0,
                 endAngle = 0
+
 
             switch (this.corner) {
                 case 'top right':
@@ -2967,6 +3063,7 @@ var map = {
 }
 
 var game = {
+    state: false,
     startNew(data){
         map.createMapFromWS(data)
 
@@ -2982,6 +3079,8 @@ var game = {
         websocket.update()
 
         animate()
+
+        game.state = true
     },
 }
 
@@ -3083,8 +3182,8 @@ var player = {
     checkCollision(dx, dy){
         var colX = false, colY = false
 
-        tileCol = Math.floor(this.x / map.tileSize)
-        tileRow = Math.floor(this.y / map.tileSize)
+        var tileCol = Math.floor(this.x / map.tileSize)
+        var tileRow = Math.floor(this.y / map.tileSize)
 
         // MAIN MAP WALL COLLISION
         if (
@@ -4119,17 +4218,17 @@ const animate = (function animWrap(){
     function doAnimate(dt){
         if (!dt) return requestAnimationFrame(doAnimate)
 
-        if (animDebug) {
-            if (!animCount) animTime = performance.now()
-            animCount++
-            if (animCount > 60) {
-                console.log(
-                    '60 animation frames took',
-                    performance.now() - animTime
-                )
-                animCount = 0
-            }
-        }
+        // if (animDebug) {
+        //     if (!animCount) animTime = performance.now()
+        //     animCount++
+        //     if (animCount > 60) {
+        //         console.log(
+        //             '60 animation frames took',
+        //             performance.now() - animTime
+        //         )
+        //         animCount = 0
+        //     }
+        // }
     
         c.clearRect(0, 0, canvas.width, canvas.height) 
     
@@ -4184,24 +4283,26 @@ const websocket = {
 
         this.lastX = 0
         this.lastY = 0
+
+        this.doUpdate = this.update.bind(this)
     },
 
     updateCount: 0,
     updateCountTimer: 0,
-    debugUpdateCount: false,
+    // debugUpdateCount: true,
 
     updateTimeout: 0,
     update(){
-        if (this.debugUpdateCount) {
-            if (!this.updateCount) {
-                this.updateCountTimer = performance.now()
-            }
-            this.updateCount++
-            if (this.updateCount > 60) {
-                this.updateCount = 0
-                console.log('60 updates took', performance.now() - this.updateCountTimer)
-            }
-        }
+        // if (this.debugUpdateCount) {
+        //     if (!this.updateCount) {
+        //         this.updateCountTimer = performance.now()
+        //     }
+        //     this.updateCount++
+        //     if (this.updateCount > 60) {
+        //         this.updateCount = 0
+        //         console.log('60 updates took', performance.now() - this.updateCountTimer)
+        //     }
+        // }
 
 
         clearTimeout(this.updateTimeout)
@@ -4223,7 +4324,7 @@ const websocket = {
             })
         }
         this.updateTimeout = 
-            setTimeout(this.update.bind(this), 1000/60)
+            setTimeout(this.doUpdate, 1000/60)
     },
     createWebSocket(){
         this.ws = 
