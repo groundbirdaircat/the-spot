@@ -415,6 +415,12 @@ var canvas, c,
     theMap, thePlayer
 
 function init(){
+
+    if ( 
+        location.host == 'thespotproto.glitch.me'
+        && location.protocol != 'https:'    
+    ) location.href = 'https://thespotproto.glitch.me'
+
     addEventListener('resize', setCanvasSize)
     canvas = document.querySelector('.canvas')
     setCanvasSize()
@@ -424,49 +430,8 @@ function init(){
     chat.init()
 
     startWrap()
-    // websocket.init()
 
     theMap = map.new()
-    // theMap.generate()
-
-    // thePlayer = player.new()
-
-    // var tile = map.tiles[1][1]
-    // tile.items.push(item.new({
-    //     itemType: 'water',
-    //     x: 21,
-    //     y: 21,
-    //     tileX: tile.tileX,
-    //     tileY: tile.tileY,
-    //     style: {
-    //         type: 'circle',
-    //         r: .25
-    //     },
-    // }))
-    // tile.items.push(item.new({
-    //     itemType: 'water',
-    //     x: 21,
-    //     y: 21,
-    //     tileX: tile.tileX,
-    //     tileY: tile.tileY,
-    //     style: {
-    //         type: 'circle',
-    //         r: .25
-    //     },
-    // }))
-
-    // tile.items.push(item.new({
-    //     itemType: 'blood',
-    //     x: 24,
-    //     y: 21,
-    //     tileX: tile.tileX,
-    //     tileY: tile.tileY,
-    //     style: {
-    //         type: 'circle',
-    //         r: .25
-    //     },
-    // }))
-
 }
 
 var allWorldItems = []
@@ -4327,7 +4292,14 @@ const websocket = {
             setTimeout(this.doUpdate, 1000/60)
     },
     createWebSocket(){
-        this.ws = 
+
+        if ( location.protocol == 'https:')
+            this.ws = 
+                new WebSocket(
+                    'wss://thespotproto.glitch.me:5000'
+                )
+
+        else this.ws = 
             new WebSocket(
                 'ws://localhost:5000'
             )
