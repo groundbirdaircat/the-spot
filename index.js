@@ -1,16 +1,18 @@
 const express = require('express')
 const app = express()
+const http = require('http')
 
 app.disable('x-powered-by')
 
 app.use(express.static(__dirname + '/public'))
 
-require('./lib/wsserver.js')
+const server = http.createServer( app )
+require('./lib/wsserver.js').start( server )
 
 console.log()
 
 app.set('port', process.env.PORT || 3000)
-app.listen(
+server.listen(
     app.get('port'), 
     function onAppListening() {
         console.log(

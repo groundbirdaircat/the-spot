@@ -4296,12 +4296,12 @@ const websocket = {
         if ( location.protocol == 'https:')
             this.ws = 
                 new WebSocket(
-                    'wss://thespotproto.glitch.me:5000'
+                    'wss://thespotproto.glitch.me:3000'
                 )
 
         else this.ws = 
             new WebSocket(
-                'ws://localhost:5000'
+                'ws://localhost:3000'
             )
     },
     setSocketListeners(){
